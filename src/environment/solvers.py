@@ -7,7 +7,13 @@ implicit at both ends of the trip.
 
 from __future__ import annotations
 
+import itertools
+
+import numpy as np
+
 from src.environment.warehouse import Instance
+
+HELD_KARP_MAX_K = 12
 
 
 def snake_order(inst: Instance) -> list[int]:
@@ -91,3 +97,61 @@ def best_heuristic(inst: Instance) -> list[int]:
         two_opt(inst, hilbert_order(inst)),
     ]
     return min(candidates, key=inst.length)
+
+
+def held_karp(inst: Instance) -> list[int]:
+    """Return the optimal route by dynamic programming (Held-Karp).
+
+    Raises:
+        ValueError: If the instance has more than ``HELD_KARP_MAX_K`` items.
+    """
+    k = inst.k
+    if k > HELD_KARP_MAX_K:
+        raise ValueError(f"exact solver supports at most {HELD_KARP_MAX_K} items")
+    if k == 0:
+        return []
+    dist = inst.D
+    full = (1 << k) - 1
+    cost = np.full((1 << k, k), np.inf)
+    parent = np.full((1 << k, k), -1, dtype=np.int64)
+    for j in range(k):
+        cost[1 << j, j] = dist[0, j + 1]
+    for mask in range(1, full + 1):
+        row = cost[mask]
+        if not np.isfinite(row).any():
+            continue
+        for nxt in range(k):
+            bit = 1 << nxt
+            if mask & bit:
+                continue
+            cand = row + dist[1 : k + 1, nxt + 1]
+            j = int(np.argmin(cand))
+            val = cand[j]
+            nmask = mask | bit
+            if val < cost[nmask, nxt]:
+                cost[nmask, nxt] = val
+                parent[nmask, nxt] = j
+    last = int(np.argmin(cost[full] + dist[1 : k + 1, 0]))
+    order = []
+    mask = full
+    cur = last
+    while cur != -1:
+        order.append(cur + 1)
+        prev = int(parent[mask, cur])
+        mask ^= 1 << cur
+        cur = prev
+    return order[::-1]
+
+
+def brute_force(inst: Instance) -> list[int]:
+    """Return the optimal route by trying every permutation (tiny ``k`` only).
+
+    Used to cross-check :func:`held_karp` in tests.
+    """
+    best: list[int] = []
+    best_len = float("inf")
+    for perm in itertools.permutations(range(1, inst.k + 1)):
+        length = inst.length(list(perm))
+        if length < best_len:
+            best, best_len = list(perm), length
+    return best

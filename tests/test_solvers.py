@@ -77,3 +77,42 @@ def test_best_heuristic_handles_empty_and_single_item(wh: Warehouse, seed: int) 
     assert S.best_heuristic(wh.instance([])) == []
     one = wh.random_instance(1, np.random.default_rng(seed))
     assert S.best_heuristic(one) == [1]
+
+
+def test_held_karp_matches_brute_force(wh: Warehouse, seed: int) -> None:
+    """The DP optimum equals the exhaustive optimum on small instances."""
+    for offset in range(6):
+        inst = wh.random_instance(6, np.random.default_rng(seed + offset))
+        dp = inst.length(S.held_karp(inst))
+        assert dp == pytest.approx(inst.length(S.brute_force(inst)))
+
+
+def test_no_method_beats_the_optimum(wh: Warehouse, seed: int) -> None:
+    """Every heuristic is at least as long as the exact optimum."""
+    for offset in range(8):
+        inst = wh.random_instance(10, np.random.default_rng(seed + offset))
+        opt = inst.length(S.held_karp(inst))
+        for fn in (
+            S.snake_order,
+            S.nearest_neighbor,
+            S.hilbert_order,
+            S.best_heuristic,
+        ):
+            assert inst.length(fn(inst)) >= opt - 1e-9
+
+
+def test_held_karp_returns_a_permutation(wh: Warehouse, seed: int) -> None:
+    """The exact route visits each item once."""
+    inst = wh.random_instance(9, np.random.default_rng(seed))
+    assert sorted(S.held_karp(inst)) == list(range(1, 10))
+
+
+def test_held_karp_edge_cases(wh: Warehouse, seed: int) -> None:
+    """Empty and one-item orders work; too many items raise ``ValueError``."""
+    assert S.held_karp(wh.instance([])) == []
+    one = wh.random_instance(1, np.random.default_rng(seed))
+    assert S.held_karp(one) == [1]
+    assert S.brute_force(wh.instance([])) == []
+    big = wh.random_instance(S.HELD_KARP_MAX_K + 1, np.random.default_rng(seed))
+    with pytest.raises(ValueError):
+        S.held_karp(big)
