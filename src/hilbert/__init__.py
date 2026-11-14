@@ -11,6 +11,10 @@ from src.hilbert.curve import (
     xy2d,
     xy2d_batch,
 )
+from src.hilbert.morton import (
+    morton_decode,
+    morton_index,
+)
 
 __all__ = [
     "curve_segments",
@@ -18,6 +22,8 @@ __all__ = [
     "encode_unit",
     "hilbert_index",
     "hilbert_side",
+    "morton_decode",
+    "morton_index",
     "next_pow2",
     "spatial_sort",
     "xy2d",
