@@ -15,6 +15,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   encoding, `spatial_sort`, unit-square encoder, rectangular-grid clipping, a
   Morton (Z-order) baseline and a locality metric, with tests
 
+- Phase 3: warehouse model (`src/environment`) with ASCII layouts, BFS walking
+  distances and paths, routing instances, and solvers: S-shape, nearest
+  neighbour, Hilbert sort, 2-opt and exact Held-Karp, with tests
+
 ### Fixed
 - `pip install -e .` failed because hatchling could not locate the `src` package
 - Import order and formatting in the Phase 1 test files (ruff)

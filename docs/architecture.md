@@ -56,6 +56,13 @@ Hilbert 1.00 / 1, Z-order 1.94 / 32. See `tests/test_locality.py`.
 - State space uses Hilbert indices (the core innovation)
 - Shaped reward with 6 components for efficient RL learning
 
+**Status (Phase 3):** this phase provides the *routing* model, not yet a
+Gymnasium environment: block-and-aisle warehouses from ASCII maps, exact BFS
+walking distances around shelves, routing instances (distance matrix plus
+Hilbert indices) and solvers (S-shape, nearest neighbour, Hilbert sort, 2-opt,
+exact Held-Karp up to 12 items). There is no `step`/`reset` loop, 10-action
+space or shaped reward yet.
+
 ### `src/rl/`
 - PPO and SAC agents via Stable-Baselines3
 - **Hilbert Replay Buffer**: samples spatially-local experiences
