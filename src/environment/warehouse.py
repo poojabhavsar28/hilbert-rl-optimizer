@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -146,4 +147,69 @@ class Warehouse:
                     if in_map and self.grid[ny, nx]:
                         out.append((x, y))
                         break
+        return out
+
+    # --------------------------------------------------------------- distance
+    def _bfs(self, src: Cell) -> np.ndarray:
+        """Return walking distances from ``src`` to every cell (-1 = unreachable).
+
+        Results are cached per source cell.
+        """
+        cached = self._dist_cache.get(src)
+        if cached is not None:
+            return cached
+        dist = np.full((self.height, self.width), -1, dtype=np.int32)
+        dist[src[1], src[0]] = 0
+        queue = deque([src])
+        grid = self.grid
+        w, h = self.width, self.height
+        while queue:
+            x, y = queue.popleft()
+            d = dist[y, x] + 1
+            for dx, dy in _NEIGHBOURS:
+                nx, ny = x + dx, y + dy
+                if (
+                    0 <= nx < w
+                    and 0 <= ny < h
+                    and not grid[ny, nx]
+                    and dist[ny, nx] < 0
+                ):
+                    dist[ny, nx] = d
+                    queue.append((nx, ny))
+        self._dist_cache[src] = dist
+        return dist
+
+    def distance(self, a: Cell, b: Cell) -> int:
+        """Return the shortest walking distance from ``a`` to ``b`` (-1 if unreachable)."""
+        return int(self._bfs(a)[b[1], b[0]])
+
+    def path(self, a: Cell, b: Cell) -> list[Cell]:
+        """Return one shortest walking path from ``a`` to ``b``, both ends included.
+
+        Raises:
+            LayoutError: If there is no walking path between the cells.
+        """
+        dist = self._bfs(b)  # distances *to* b, so walk downhill from a
+        if dist[a[1], a[0]] < 0:
+            raise LayoutError(f"no walking path between {a} and {b}")
+        cur = a
+        out = [cur]
+        while cur != b:
+            x, y = cur
+            for dx, dy in _NEIGHBOURS:
+                nx, ny = x + dx, y + dy
+                in_map = 0 <= nx < self.width and 0 <= ny < self.height
+                if in_map and dist[ny, nx] >= 0 and dist[ny, nx] == dist[y, x] - 1:
+                    cur = (nx, ny)
+                    break
+            else:  # pragma: no cover - a BFS distance map always has a downhill step
+                raise LayoutError(f"no walking path between {a} and {b}")
+            out.append(cur)
+        return out
+
+    def route_path(self, cells: list[Cell]) -> list[Cell]:
+        """Return the full cell-by-cell walk that visits ``cells`` in order."""
+        out: list[Cell] = [cells[0]]
+        for a, b in zip(cells, cells[1:], strict=False):
+            out.extend(self.path(a, b)[1:])
         return out

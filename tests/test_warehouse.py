@@ -63,3 +63,50 @@ def test_oversized_layout_is_rejected() -> None:
     """Maps larger than ``MAX_SIDE`` are refused."""
     with pytest.raises(LayoutError):
         Warehouse.from_ascii("D" + "." * 200)
+
+
+def test_distance_is_symmetric_and_matches_path_length() -> None:
+    """Walking distance is symmetric and equals the length of the returned path."""
+    wh = Warehouse.generate(6, 14)
+    picks = wh.pick_cells()
+    a, b = picks[3], picks[-5]
+    assert wh.distance(a, b) == wh.distance(b, a)
+    path = wh.path(a, b)
+    assert path[0] == a and path[-1] == b
+    assert len(path) - 1 == wh.distance(a, b)
+    assert all(wh.walkable(c) for c in path)
+
+
+def test_path_steps_are_single_moves() -> None:
+    """Every step of a path moves exactly one cell."""
+    wh = Warehouse.generate(5, 12)
+    path = wh.path(wh.depot, wh.pick_cells()[-1])
+    for a, b in zip(path, path[1:], strict=False):
+        assert abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1
+
+
+def test_distance_goes_around_shelves() -> None:
+    """Walking distance can exceed the Manhattan distance when shelves block."""
+    wh = Warehouse.from_ascii("D#.\n.#.\n...")
+    assert wh.distance((0, 0), (2, 0)) == 6  # down, across the bottom, up
+
+
+def test_unreachable_cells_report_minus_one_and_have_no_path() -> None:
+    """A walled-off cell has distance -1 and ``path`` raises."""
+    wh = Warehouse.from_ascii("D#.\n.#.\n.#.")
+    assert wh.distance((0, 0), (2, 0)) == -1
+    with pytest.raises(LayoutError):
+        wh.path((0, 0), (2, 0))
+
+
+def test_route_path_visits_waypoints_in_order() -> None:
+    """The full route passes through each waypoint, in order."""
+    wh = Warehouse.generate(5, 12)
+    picks = wh.pick_cells()
+    way = [wh.depot, picks[2], picks[10], wh.depot]
+    route = wh.route_path(way)
+    assert route[0] == route[-1] == wh.depot
+    positions = [route.index(w) for w in way[:-1]]
+    assert positions == sorted(positions)
+    expected = sum(wh.distance(a, b) for a, b in zip(way, way[1:], strict=False))
+    assert len(route) - 1 == expected
