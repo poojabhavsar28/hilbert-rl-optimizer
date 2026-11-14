@@ -5,8 +5,8 @@ Fixtures defined here are automatically available to ALL test files
 without any import needed — pytest picks them up automatically.
 """
 
-import pytest
 import numpy as np
+import pytest
 
 
 @pytest.fixture(scope="session")
@@ -25,11 +25,11 @@ def rng(seed: int) -> np.random.Generator:
 def sample_2d_coords() -> list[tuple[float, float]]:
     """A small set of known 2D coordinates for encoder tests."""
     return [
-        (0.0, 0.0),   # origin
-        (1.0, 1.0),   # far corner
-        (0.5, 0.5),   # center
-        (0.25, 0.75), # upper-left quadrant
-        (0.75, 0.25), # lower-right quadrant
+        (0.0, 0.0),  # origin
+        (1.0, 1.0),  # far corner
+        (0.5, 0.5),  # center
+        (0.25, 0.75),  # upper-left quadrant
+        (0.75, 0.25),  # lower-right quadrant
     ]
 
 
