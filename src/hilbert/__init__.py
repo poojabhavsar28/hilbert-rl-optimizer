@@ -7,6 +7,7 @@ from src.hilbert.curve import (
     hilbert_side,
     next_pow2,
     xy2d,
+    xy2d_batch,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "hilbert_side",
     "next_pow2",
     "xy2d",
+    "xy2d_batch",
 ]

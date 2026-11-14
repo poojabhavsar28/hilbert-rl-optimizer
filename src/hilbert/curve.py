@@ -10,6 +10,9 @@ Only two dimensions are implemented here.
 
 from __future__ import annotations
 
+import numpy as np
+from numpy.typing import NDArray
+
 __all__ = [
     "curve_segments",
     "d2xy",
@@ -17,6 +20,7 @@ __all__ = [
     "hilbert_side",
     "next_pow2",
     "xy2d",
+    "xy2d_batch",
 ]
 
 
@@ -136,3 +140,42 @@ def curve_segments(width: int, height: int) -> list[list[tuple[int, int]]]:
     if current:
         segments.append(current)
     return segments
+
+
+def xy2d_batch(
+    n: int, x: NDArray[np.integer], y: NDArray[np.integer]
+) -> NDArray[np.int64]:
+    """Vectorised :func:`xy2d` for arrays of cells.
+
+    Args:
+        n: Side length of the square grid; must be a power of two.
+        x: Integer columns, any shape.
+        y: Integer rows, same shape as ``x``.
+
+    Returns:
+        An ``int64`` array of curve indices with the same shape as the inputs.
+
+    Raises:
+        ValueError: If ``n`` is not a power of two, the shapes differ, or a
+            cell lies outside the grid.
+    """
+    _check_side(n)
+    xs = np.asarray(x, dtype=np.int64).copy()
+    ys = np.asarray(y, dtype=np.int64).copy()
+    if xs.shape != ys.shape:
+        raise ValueError("x and y must have the same shape")
+    if xs.size and (xs.min() < 0 or ys.min() < 0 or xs.max() >= n or ys.max() >= n):
+        raise ValueError("cell outside the grid")
+    d = np.zeros_like(xs)
+    s = n // 2
+    while s > 0:
+        rx = ((xs & s) > 0).astype(np.int64)
+        ry = ((ys & s) > 0).astype(np.int64)
+        d += s * s * ((3 * rx) ^ ry)
+        flip = (ry == 0) & (rx == 1)
+        xs = np.where(flip, n - 1 - xs, xs)
+        ys = np.where(flip, n - 1 - ys, ys)
+        swap = ry == 0
+        xs, ys = np.where(swap, ys, xs), np.where(swap, xs, ys)
+        s //= 2
+    return d

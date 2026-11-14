@@ -1,5 +1,6 @@
 """Tests for the 2D Hilbert curve encoder and decoder."""
 
+import numpy as np
 import pytest
 
 from src.hilbert import (
@@ -9,6 +10,7 @@ from src.hilbert import (
     hilbert_side,
     next_pow2,
     xy2d,
+    xy2d_batch,
 )
 
 
@@ -85,3 +87,29 @@ def test_clipped_curve_on_square_power_of_two_is_one_segment() -> None:
     """A power-of-two square needs no clipping, so there is a single polyline."""
     segs = curve_segments(8, 8)
     assert len(segs) == 1 and len(segs[0]) == 64
+
+
+@pytest.mark.parametrize("n", [1, 2, 8, 32])
+def test_batch_encoding_matches_scalar(n: int) -> None:
+    """The vectorised encoder agrees with the scalar one on every cell."""
+    xs, ys = np.meshgrid(np.arange(n), np.arange(n))
+    batch = xy2d_batch(n, xs, ys)
+    assert batch.shape == (n, n)
+    expected = [[xy2d(n, int(x), int(y)) for x in range(n)] for y in range(n)]
+    assert batch.tolist() == expected
+
+
+def test_batch_encoding_handles_empty_input() -> None:
+    """An empty batch returns an empty array rather than failing."""
+    out = xy2d_batch(8, np.array([], dtype=int), np.array([], dtype=int))
+    assert out.shape == (0,)
+
+
+def test_batch_encoding_rejects_bad_input() -> None:
+    """Shape mismatches, bad sides and out-of-grid cells raise ``ValueError``."""
+    with pytest.raises(ValueError):
+        xy2d_batch(8, np.array([1, 2]), np.array([1]))
+    with pytest.raises(ValueError):
+        xy2d_batch(6, np.array([1]), np.array([1]))
+    with pytest.raises(ValueError):
+        xy2d_batch(8, np.array([8]), np.array([0]))
