@@ -11,12 +11,16 @@ from src.hilbert.curve import (
     xy2d,
     xy2d_batch,
 )
+from src.hilbert.locality import (
+    consecutive_jumps,
+)
 from src.hilbert.morton import (
     morton_decode,
     morton_index,
 )
 
 __all__ = [
+    "consecutive_jumps",
     "curve_segments",
     "d2xy",
     "encode_unit",
