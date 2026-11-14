@@ -1,8 +1,10 @@
 """Tests for the warehouse layout model."""
 
+import numpy as np
 import pytest
 
 from src.environment.warehouse import LayoutError, Warehouse, generate_layout
+from src.hilbert import xy2d
 
 
 def test_generated_layout_shape_and_depot() -> None:
@@ -110,3 +112,54 @@ def test_route_path_visits_waypoints_in_order() -> None:
     assert positions == sorted(positions)
     expected = sum(wh.distance(a, b) for a, b in zip(way, way[1:], strict=False))
     assert len(route) - 1 == expected
+
+
+def test_instance_distance_matrix_is_consistent(seed: int) -> None:
+    """Instance distances are symmetric, zero on the diagonal, and match BFS."""
+    wh = Warehouse.generate(6, 14)
+    inst = wh.random_instance(8, np.random.default_rng(seed))
+    assert inst.k == 8 and inst.cells[0] == wh.depot
+    assert inst.D.shape == (9, 9)
+    assert np.array_equal(inst.D, inst.D.T)
+    assert np.all(np.diag(inst.D) == 0)
+    assert inst.D[0, 3] == wh.distance(inst.cells[0], inst.cells[3])
+
+
+def test_instance_stores_hilbert_indices(seed: int) -> None:
+    """Each node carries its Hilbert index on the enclosing square."""
+    wh = Warehouse.generate(6, 14)
+    inst = wh.random_instance(5, np.random.default_rng(seed))
+    side = wh.hilbert_side()
+    assert side == 32 and inst.hilbert_n == 32.0**2
+    for node, (x, y) in enumerate(inst.cells):
+        assert inst.hilbert[node] == xy2d(side, x, y)
+
+
+def test_round_trip_length() -> None:
+    """``length`` adds the legs depot -> items -> depot."""
+    wh = Warehouse.generate(5, 12)
+    a, b = wh.pick_cells()[4], wh.pick_cells()[20]
+    inst = wh.instance([a, b])
+    expected = wh.distance(wh.depot, a) + wh.distance(a, b) + wh.distance(b, wh.depot)
+    assert inst.length([1, 2]) == expected
+    assert wh.instance([]).length([]) == 0.0
+
+
+def test_random_instance_is_reproducible_and_validated(seed: int) -> None:
+    """The same seed gives the same items; asking for too many raises."""
+    wh = Warehouse.generate(5, 12)
+    a = wh.random_instance(6, np.random.default_rng(seed))
+    b = wh.random_instance(6, np.random.default_rng(seed))
+    assert a.cells == b.cells and len(set(a.cells)) == 7
+    with pytest.raises(LayoutError):
+        wh.random_instance(10_000, np.random.default_rng(seed))
+
+
+def test_instance_rejects_bad_items() -> None:
+    """Shelf cells and walled-off cells cannot be picked."""
+    wh = Warehouse.generate(4, 10)
+    with pytest.raises(LayoutError):
+        wh.instance([(1, 1)])
+    closed = Warehouse.from_ascii("D#.\n.#.\n.#.")
+    with pytest.raises(LayoutError):
+        closed.instance([(2, 0)])

@@ -7,6 +7,9 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from src.hilbert import hilbert_index
+from src.hilbert import hilbert_side as enclosing_side
+
 Cell = tuple[int, int]  # (x, y): column, row counted from the top-left
 
 MAX_SIDE = 200
@@ -213,3 +216,82 @@ class Warehouse:
         for a, b in zip(cells, cells[1:], strict=False):
             out.extend(self.path(a, b)[1:])
         return out
+
+    # --------------------------------------------------------------- instance
+    def hilbert(self, cell: Cell) -> int:
+        """Return the Hilbert index of ``cell`` on this warehouse's grid."""
+        return hilbert_index(self.width, self.height, cell[0], cell[1])
+
+    def hilbert_side(self) -> int:
+        """Return the side of the power-of-two square the Hilbert curve covers."""
+        return enclosing_side(self.width, self.height)
+
+    def instance(self, items: list[Cell]) -> Instance:
+        """Build a routing instance for the given pick cells (the depot is node 0).
+
+        Raises:
+            LayoutError: If an item is not a walkable cell or cannot be reached.
+        """
+        for c in items:
+            if not self.walkable(tuple(c)):
+                raise LayoutError(f"pick location {tuple(c)} is not a walkable cell")
+        cells = [self.depot] + [tuple(c) for c in items]
+        n = len(cells)
+        dist_matrix = np.zeros((n, n), dtype=np.float64)
+        for i, ci in enumerate(cells):
+            dist = self._bfs(ci)
+            for j, cj in enumerate(cells):
+                v = dist[cj[1], cj[0]]
+                if v < 0:
+                    raise LayoutError(f"pick location {cj} cannot be reached from {ci}")
+                dist_matrix[i, j] = v
+        hil = np.array([self.hilbert(c) for c in cells], dtype=np.float64)
+        return Instance(
+            cells=cells,
+            D=dist_matrix,
+            hilbert=hil,
+            hilbert_n=float(self.hilbert_side() ** 2),
+        )
+
+    def random_instance(self, k: int, rng: np.random.Generator) -> Instance:
+        """Build an instance of ``k`` distinct random pick locations.
+
+        Raises:
+            LayoutError: If the warehouse has fewer than ``k`` pick locations.
+        """
+        picks = self.pick_cells()
+        if k > len(picks):
+            raise LayoutError(f"layout only has {len(picks)} pick locations")
+        idx = rng.choice(len(picks), size=k, replace=False)
+        return self.instance([picks[i] for i in idx])
+
+
+@dataclass
+class Instance:
+    """One picking trip: node 0 is the depot, nodes 1..k are the items.
+
+    Attributes:
+        cells: Cell of each node.
+        D: ``(k + 1, k + 1)`` matrix of walking distances between nodes.
+        hilbert: Hilbert index of each node.
+        hilbert_n: Number of cells on the Hilbert square (to normalise indices).
+    """
+
+    cells: list[Cell]
+    D: np.ndarray
+    hilbert: np.ndarray
+    hilbert_n: float
+
+    @property
+    def k(self) -> int:
+        """Number of items to collect."""
+        return len(self.cells) - 1
+
+    def length(self, order: list[int]) -> float:
+        """Return the round-trip length ``depot -> order... -> depot``."""
+        total = 0.0
+        prev = 0
+        for node in order:
+            total += self.D[prev, node]
+            prev = node
+        return float(total + self.D[prev, 0])
