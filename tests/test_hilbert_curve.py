@@ -2,7 +2,14 @@
 
 import pytest
 
-from src.hilbert import d2xy, hilbert_index, hilbert_side, next_pow2, xy2d
+from src.hilbert import (
+    curve_segments,
+    d2xy,
+    hilbert_index,
+    hilbert_side,
+    next_pow2,
+    xy2d,
+)
 
 
 @pytest.mark.parametrize("n", [1, 2, 4, 8, 16, 32])
@@ -59,3 +66,22 @@ def test_rectangular_index_uses_enclosing_square() -> None:
     """Indices on a rectangle equal those on its enclosing power-of-two square."""
     assert hilbert_index(25, 22, 0, 0) == 0
     assert hilbert_index(25, 22, 7, 3) == xy2d(32, 7, 3)
+
+
+def test_clipped_curve_covers_every_cell_once() -> None:
+    """Clipping to a non power-of-two rectangle keeps each cell exactly once."""
+    cells = [c for seg in curve_segments(25, 22) for c in seg]
+    assert len(cells) == len(set(cells)) == 25 * 22
+
+
+def test_clipped_curve_segments_are_connected_paths() -> None:
+    """Inside one segment, consecutive points are grid neighbours."""
+    for seg in curve_segments(13, 12):
+        for a, b in zip(seg, seg[1:], strict=False):
+            assert abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1
+
+
+def test_clipped_curve_on_square_power_of_two_is_one_segment() -> None:
+    """A power-of-two square needs no clipping, so there is a single polyline."""
+    segs = curve_segments(8, 8)
+    assert len(segs) == 1 and len(segs[0]) == 64

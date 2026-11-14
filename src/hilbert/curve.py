@@ -11,6 +11,7 @@ Only two dimensions are implemented here.
 from __future__ import annotations
 
 __all__ = [
+    "curve_segments",
     "d2xy",
     "hilbert_index",
     "hilbert_side",
@@ -112,3 +113,26 @@ def hilbert_index(width: int, height: int, x: int, y: int) -> int:
     are comparable across every cell of the same grid.
     """
     return xy2d(hilbert_side(width, height), x, y)
+
+
+def curve_segments(width: int, height: int) -> list[list[tuple[int, int]]]:
+    """Return the Hilbert curve clipped to a ``width x height`` rectangle.
+
+    The curve leaves and re-enters the rectangle when it is not a power-of-two
+    square, so the result is a list of polylines, split wherever the curve
+    steps outside. Every cell of the rectangle appears exactly once.
+    """
+    n = hilbert_side(width, height)
+    segments: list[list[tuple[int, int]]] = []
+    current: list[tuple[int, int]] = []
+    for d in range(n * n):
+        x, y = d2xy(n, d)
+        if x >= width or y >= height:
+            if current:
+                segments.append(current)
+                current = []
+            continue
+        current.append((x, y))
+    if current:
+        segments.append(current)
+    return segments
