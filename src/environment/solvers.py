@@ -49,3 +49,45 @@ def hilbert_order(inst: Instance) -> list[int]:
     forward = inst.length(nodes)
     backward = inst.length(nodes[::-1])
     return nodes if forward <= backward else nodes[::-1]
+
+
+def two_opt(
+    inst: Instance, order: list[int] | None = None, max_passes: int = 100
+) -> list[int]:
+    """Improve a route with 2-opt local search on the round trip.
+
+    Args:
+        inst: The routing instance.
+        order: Starting route; defaults to nearest neighbour.
+        max_passes: Cap on full improvement sweeps.
+    """
+    if order is None:
+        order = nearest_neighbor(inst)
+    tour = [0] + list(order) + [0]
+    dist = inst.D
+    n = len(tour)
+    improved = True
+    passes = 0
+    while improved and passes < max_passes:
+        improved = False
+        passes += 1
+        for i in range(1, n - 2):
+            for j in range(i + 1, n - 1):
+                a, b = tour[i - 1], tour[i]
+                c, d = tour[j], tour[j + 1]
+                delta = dist[a, c] + dist[b, d] - dist[a, b] - dist[c, d]
+                if delta < -1e-9:
+                    tour[i : j + 1] = reversed(tour[i : j + 1])
+                    improved = True
+    return tour[1:-1]
+
+
+def best_heuristic(inst: Instance) -> list[int]:
+    """Return the better of 2-opt started from nearest neighbour and from Hilbert."""
+    if inst.k == 0:
+        return []
+    candidates = [
+        two_opt(inst, nearest_neighbor(inst)),
+        two_opt(inst, hilbert_order(inst)),
+    ]
+    return min(candidates, key=inst.length)

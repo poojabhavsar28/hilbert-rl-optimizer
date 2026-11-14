@@ -50,3 +50,30 @@ def test_hilbert_order_picks_the_shorter_direction(wh: Warehouse, seed: int) -> 
 def test_baselines_handle_no_items(wh: Warehouse, fn) -> None:
     """An empty order produces an empty route."""
     assert fn(wh.instance([])) == []
+
+
+def test_two_opt_never_lengthens_its_start(wh: Warehouse, seed: int) -> None:
+    """2-opt returns a permutation no longer than the route it started from."""
+    for offset in range(6):
+        inst = wh.random_instance(11, np.random.default_rng(seed + offset))
+        start = S.snake_order(inst)
+        improved = S.two_opt(inst, start)
+        assert sorted(improved) == list(range(1, 12))
+        assert inst.length(improved) <= inst.length(start) + 1e-9
+
+
+def test_best_heuristic_beats_or_ties_nearest_neighbor(
+    wh: Warehouse, seed: int
+) -> None:
+    """The combined heuristic is at least as good as plain nearest neighbour."""
+    for offset in range(6):
+        inst = wh.random_instance(12, np.random.default_rng(seed + offset))
+        best = inst.length(S.best_heuristic(inst))
+        assert best <= inst.length(S.nearest_neighbor(inst)) + 1e-9
+
+
+def test_best_heuristic_handles_empty_and_single_item(wh: Warehouse, seed: int) -> None:
+    """Degenerate orders are handled without error."""
+    assert S.best_heuristic(wh.instance([])) == []
+    one = wh.random_instance(1, np.random.default_rng(seed))
+    assert S.best_heuristic(one) == [1]
