@@ -1,0 +1,149 @@
+"""Warehouse model: a grid with shelves, a depot, walking distances and routes."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+import numpy as np
+
+Cell = tuple[int, int]  # (x, y): column, row counted from the top-left
+
+MAX_SIDE = 200
+_NEIGHBOURS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+
+
+class LayoutError(ValueError):
+    """Raised when a warehouse layout or an order is invalid."""
+
+
+def generate_layout(aisles: int = 8, height: int = 22) -> str:
+    """Build a classic block-and-aisle warehouse as an ASCII map.
+
+    ``#`` is a shelf, ``.`` is walkable floor and ``D`` is the depot. Shelf
+    blocks are two cells wide and separated by one-cell vertical aisles; there
+    are cross-aisles along the top and bottom and one through the middle. The
+    depot is the bottom-left corner.
+
+    Args:
+        aisles: Number of aisle columns (2 to 40); the map is ``3 * aisles + 1`` wide.
+        height: Number of rows (7 to ``MAX_SIDE``).
+
+    Raises:
+        LayoutError: If a dimension is out of range.
+    """
+    if not (2 <= aisles <= 40):
+        raise LayoutError("aisles must be between 2 and 40")
+    if not (7 <= height <= MAX_SIDE):
+        raise LayoutError(f"height must be between 7 and {MAX_SIDE}")
+    width = aisles * 3 + 1
+    if width > MAX_SIDE:
+        raise LayoutError(f"layout would be wider than {MAX_SIDE} cells")
+    mid = height // 2
+    rows = []
+    for y in range(height):
+        row = []
+        for x in range(width):
+            in_block = x % 3 != 0
+            cross = y in (0, height - 1, mid)
+            row.append("#" if in_block and not cross else ".")
+        rows.append(row)
+    rows[height - 1][0] = "D"
+    return "\n".join("".join(r) for r in rows)
+
+
+@dataclass(eq=False)
+class Warehouse:
+    """A grid warehouse with one depot.
+
+    Attributes:
+        grid: Boolean array of shape ``(height, width)``; ``True`` marks a shelf.
+        depot: Cell where every trip starts and ends.
+    """
+
+    grid: np.ndarray
+    depot: Cell
+    _dist_cache: dict[Cell, np.ndarray] = field(default_factory=dict, repr=False)
+
+    # ------------------------------------------------------------------ build
+    @classmethod
+    def from_ascii(cls, text: str) -> Warehouse:
+        """Parse an ASCII map (``#`` shelf, ``.`` floor, one ``D`` depot).
+
+        Raises:
+            LayoutError: If the map is empty, ragged, too large, has an unknown
+                character, or does not contain exactly one depot.
+        """
+        lines = [ln.rstrip() for ln in text.strip("\n").splitlines()]
+        lines = [ln for ln in lines if ln != ""]
+        if not lines:
+            raise LayoutError("layout is empty")
+        width = len(lines[0])
+        if any(len(ln) != width for ln in lines):
+            raise LayoutError("layout rows must all have the same length")
+        if width > MAX_SIDE or len(lines) > MAX_SIDE:
+            raise LayoutError(f"layout must be at most {MAX_SIDE} x {MAX_SIDE}")
+        depot: Cell | None = None
+        grid = np.zeros((len(lines), width), dtype=bool)
+        for y, ln in enumerate(lines):
+            for x, ch in enumerate(ln):
+                if ch == "#":
+                    grid[y, x] = True
+                elif ch == "D":
+                    if depot is not None:
+                        raise LayoutError("layout must contain exactly one depot 'D'")
+                    depot = (x, y)
+                elif ch != ".":
+                    raise LayoutError(
+                        f"unknown layout character {ch!r}; use '#', '.', 'D'"
+                    )
+        if depot is None:
+            raise LayoutError("layout must contain exactly one depot 'D'")
+        return cls(grid=grid, depot=depot)
+
+    @classmethod
+    def generate(cls, aisles: int = 8, height: int = 22) -> Warehouse:
+        """Build a generated block-and-aisle warehouse (see :func:`generate_layout`)."""
+        return cls.from_ascii(generate_layout(aisles, height))
+
+    def to_ascii(self) -> str:
+        """Render the warehouse back to its ASCII map."""
+        rows = []
+        for y in range(self.height):
+            rows.append(
+                "".join(
+                    "D" if (x, y) == self.depot else ("#" if self.grid[y, x] else ".")
+                    for x in range(self.width)
+                )
+            )
+        return "\n".join(rows)
+
+    # ------------------------------------------------------------- properties
+    @property
+    def height(self) -> int:
+        """Number of rows."""
+        return int(self.grid.shape[0])
+
+    @property
+    def width(self) -> int:
+        """Number of columns."""
+        return int(self.grid.shape[1])
+
+    def walkable(self, cell: Cell) -> bool:
+        """Return whether ``cell`` is inside the map and not a shelf."""
+        x, y = cell
+        return 0 <= x < self.width and 0 <= y < self.height and not self.grid[y, x]
+
+    def pick_cells(self) -> list[Cell]:
+        """Return walkable cells (other than the depot) that touch a shelf."""
+        out = []
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.grid[y, x] or (x, y) == self.depot:
+                    continue
+                for dx, dy in _NEIGHBOURS:
+                    nx, ny = x + dx, y + dy
+                    in_map = 0 <= nx < self.width and 0 <= ny < self.height
+                    if in_map and self.grid[ny, nx]:
+                        out.append((x, y))
+                        break
+        return out
