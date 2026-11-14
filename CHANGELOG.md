@@ -11,6 +11,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - Phase 1: Repository foundation, dev environment, CI/CD pipeline
+- Phase 2: 2D Hilbert curve encoder/decoder (`src/hilbert`) with vectorised batch
+  encoding, `spatial_sort`, unit-square encoder, rectangular-grid clipping, a
+  Morton (Z-order) baseline and a locality metric, with tests
+
+### Fixed
+- `pip install -e .` failed because hatchling could not locate the `src` package
+- Import order and formatting in the Phase 1 test files (ruff)
 
 ---
 

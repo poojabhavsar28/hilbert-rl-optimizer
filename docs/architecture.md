@@ -41,6 +41,15 @@ tested, and deployed independently.
 - Supports 2D, 3D, and arbitrary N dimensions
 - Adaptive resolution for non-uniform data density
 
+**Status (Phase 2):** 2D only. Implemented: `xy2d`/`d2xy`, vectorised
+`xy2d_batch`, `spatial_sort`, `encode_unit` (unit square to a normalised index),
+`curve_segments` (clip to rectangles), a Morton (Z-order) baseline and a
+locality metric. 3D / N-D encoding and adaptive resolution are not implemented
+yet.
+
+Measured locality (mean / worst grid distance between consecutive indices, 32x32):
+Hilbert 1.00 / 1, Z-order 1.94 / 32. See `tests/test_locality.py`.
+
 ### `src/environment/`
 - Gymnasium-compatible warehouse simulation
 - Agent must pick items and deliver to dispatch station
