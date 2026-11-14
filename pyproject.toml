@@ -55,6 +55,13 @@ Homepage = "https://github.com/poojabhavsar28/hilbert-rl-optimizer"
 Repository = "https://github.com/poojabhavsar28/hilbert-rl-optimizer"
 Issues = "https://github.com/poojabhavsar28/hilbert-rl-optimizer/issues"
 
+# ── Build (hatchling) ─────────────────────────────────────────────────────────
+# The importable package is `src` (e.g. `uvicorn src.api.main:app`), so hatchling
+# must be told to ship it; its default heuristics look for a package named
+# after the project and fail with "Unable to determine which files to ship".
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
 # ── Ruff (linter + formatter, replaces black + flake8 + isort) ───────────────
 [tool.ruff]
 line-length = 88
