@@ -10,6 +10,8 @@ Only two dimensions are implemented here.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -18,7 +20,9 @@ __all__ = [
     "d2xy",
     "hilbert_index",
     "hilbert_side",
+    "encode_unit",
     "next_pow2",
+    "spatial_sort",
     "xy2d",
     "xy2d_batch",
 ]
@@ -179,3 +183,41 @@ def xy2d_batch(
         xs, ys = np.where(swap, ys, xs), np.where(swap, xs, ys)
         s //= 2
     return d
+
+
+def spatial_sort(cells: Iterable[tuple[int, int]], n: int) -> list[tuple[int, int]]:
+    """Sort grid cells along the Hilbert curve.
+
+    The sort is stable, so cells with equal indices (duplicates) keep their
+    input order. Visiting cells in this order is a cheap locality-preserving
+    tour, though it ignores obstacles.
+
+    Args:
+        cells: ``(x, y)`` cells, each inside the ``n x n`` grid.
+        n: Side length of the square grid; must be a power of two.
+    """
+    return sorted(cells, key=lambda c: xy2d(n, c[0], c[1]))
+
+
+def encode_unit(x: float, y: float, order: int = 10) -> float:
+    """Encode a point of the unit square as a normalised Hilbert index.
+
+    The square is divided into a ``2**order x 2**order`` grid and the point
+    mapped to its cell, so nearby points get nearby values in ``[0, 1)``.
+
+    Args:
+        x: Horizontal coordinate in ``[0, 1]``.
+        y: Vertical coordinate in ``[0, 1]``.
+        order: Resolution; the grid has ``2**order`` cells per side (1 to 16).
+
+    Raises:
+        ValueError: If a coordinate is outside ``[0, 1]`` or ``order`` is invalid.
+    """
+    if not 1 <= order <= 16:
+        raise ValueError("order must be between 1 and 16")
+    if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
+        raise ValueError("coordinates must lie in [0, 1]")
+    n = 1 << order
+    cx = min(int(x * n), n - 1)
+    cy = min(int(y * n), n - 1)
+    return xy2d(n, cx, cy) / (n * n)

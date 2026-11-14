@@ -6,9 +6,11 @@ import pytest
 from src.hilbert import (
     curve_segments,
     d2xy,
+    encode_unit,
     hilbert_index,
     hilbert_side,
     next_pow2,
+    spatial_sort,
     xy2d,
     xy2d_batch,
 )
@@ -113,3 +115,44 @@ def test_batch_encoding_rejects_bad_input() -> None:
         xy2d_batch(6, np.array([1]), np.array([1]))
     with pytest.raises(ValueError):
         xy2d_batch(8, np.array([8]), np.array([0]))
+
+
+def test_spatial_sort_orders_by_curve_index() -> None:
+    """Sorted cells have non-decreasing Hilbert indices; duplicates are kept."""
+    cells = [(3, 3), (0, 0), (1, 0), (0, 1), (3, 3)]
+    out = spatial_sort(cells, 4)
+    indices = [xy2d(4, x, y) for x, y in out]
+    assert indices == sorted(indices)
+    assert sorted(out) == sorted(cells)
+
+
+def test_spatial_sort_of_full_grid_reproduces_the_curve() -> None:
+    """Sorting every cell of a grid yields exactly the curve, cell by cell."""
+    n = 8
+    cells = [(x, y) for y in range(n) for x in range(n)]
+    assert spatial_sort(cells, n) == [d2xy(n, d) for d in range(n * n)]
+
+
+def test_encode_unit_range_and_corner_values(sample_2d_coords: list) -> None:
+    """Encoded values lie in ``[0, 1)``; the origin encodes to 0."""
+    for x, y in sample_2d_coords:
+        assert 0.0 <= encode_unit(x, y) < 1.0
+    assert encode_unit(0.0, 0.0) == 0.0
+
+
+def test_encode_unit_preserves_locality() -> None:
+    """Points a hair apart are far closer in index than a distant point."""
+    a = encode_unit(0.50, 0.50, order=8)
+    near = encode_unit(0.5005, 0.50, order=8)
+    far = encode_unit(0.05, 0.95, order=8)
+    assert abs(a - near) < abs(a - far)
+
+
+@pytest.mark.parametrize(
+    ("x", "y", "order"),
+    [(-0.1, 0.5, 8), (0.5, 1.2, 8), (0.5, 0.5, 0), (0.5, 0.5, 17)],
+)
+def test_encode_unit_rejects_bad_input(x: float, y: float, order: int) -> None:
+    """Coordinates outside the unit square and bad orders raise ``ValueError``."""
+    with pytest.raises(ValueError):
+        encode_unit(x, y, order)
