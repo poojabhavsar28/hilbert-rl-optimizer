@@ -173,3 +173,12 @@ def test_optimize_csv_errors(text: str) -> None:
 def test_optimize_csv_too_large() -> None:
     """Uploads over 1 MB are refused with 413."""
     assert upload("order_id,x,y\n" + "A,0,5\n" * 200_000).status_code == 413
+
+
+def test_openapi_schema_lists_every_endpoint() -> None:
+    """The interactive docs depend on a valid OpenAPI document."""
+    schema = client.get("/openapi.json").json()
+    paths = set(schema["paths"])
+    expected = {"/api/health", "/api/layout", "/api/instance", "/api/solve"}
+    assert expected | {"/api/optimize", "/api/optimize/csv"} <= paths
+    assert client.get("/docs").status_code == 200
