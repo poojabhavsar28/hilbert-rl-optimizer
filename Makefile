@@ -7,8 +7,10 @@
 #   make clean    → remove all cache and build artifacts
 #   make run-api  → start FastAPI dev server
 #   make run-app  → start Streamlit dashboard
+#   make train    → train the routing agent (writes models/routing_agent.json)
+#   make benchmark / ablation / replay → reproduce the documented results
 
-.PHONY: setup test lint format check clean run-api run-app docker-up docker-down help
+.PHONY: setup test lint format check clean run-api run-app docker-up docker-down help train benchmark ablation replay
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 setup:
@@ -52,6 +54,19 @@ run-api:
 run-app:
 	streamlit run app/main.py
 
+# ── Training and experiments ──────────────────────────────────────────────────
+train:
+	python -m src.rl.cli train
+
+benchmark:
+	python -m src.rl.cli benchmark
+
+ablation:
+	python -m src.rl.cli ablation
+
+replay:
+	python -m src.rl.cli replay --seeds 20 --episodes 300
+
 # ── Docker ────────────────────────────────────────────────────────────────────
 docker-up:
 	docker compose up --build
@@ -85,6 +100,10 @@ help:
 	@echo "  make check      Run lint + test (pre-PR check)"
 	@echo "  make run-api    Start FastAPI on port 8000"
 	@echo "  make run-app    Start Streamlit dashboard"
+	@echo "  make train      Train the routing agent"
+	@echo "  make benchmark  Compare routing methods on held-out warehouses"
+	@echo "  make ablation   Train with vs without Hilbert features"
+	@echo "  make replay     Uniform vs Hilbert-indexed replay experiment"
 	@echo "  make docker-up  Start all services with Docker Compose"
 	@echo "  make clean      Remove cache and build artifacts"
 	@echo ""
