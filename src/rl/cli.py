@@ -63,7 +63,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         agent.save(path, meta=meta)
         print(f"saved {path} in {time.time() - t0:.0f}s")
         print(
-            "weights:", dict(zip(FEATURE_NAMES, np.round(agent.theta, 2), strict=True))
+            "weights:",
+            dict(zip(FEATURE_NAMES, np.round(agent.theta, 2).tolist(), strict=True)),
         )
     elif args.cmd == "benchmark":
         res = benchmark(Agent.load(), n_instances=args.instances)
