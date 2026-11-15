@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hilbert-RL Spatial Optimizer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Cpath d=%27M4 28V4h8v16h8V4h8v24%27 fill=%27none%27 stroke=%27%230f766e%27 stroke-width=%273%27/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f3ec; --panel: #fffdf8; --ink: #1c2321; --muted: #5d6965; --line: #ddd6c6;
+    --floor: #fbf8f1; --shelf: #b9b19e; --shelf-edge: #a39a85;
+    --accent: #0f766e; --accent-2: #c2410c; --depot: #1d4ed8; --item: #1c2321; --good: #15803d; --bad: #b91c1c;
+    --curve: rgba(15, 118, 110, .22);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12161a; --panel: #1a2026; --ink: #e8ece9; --muted: #98a5a0; --line: #2b343b;
+      --floor: #1f272e; --shelf: #3a4650; --shelf-edge: #4a5a66;
+      --accent: #2dd4bf; --accent-2: #fb923c; --depot: #60a5fa; --item: #e8ece9; --good: #4ade80; --bad: #f87171;
+      --curve: rgba(45, 212, 191, .2);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 56px; }
+  header h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -.01em; }
+  header p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-top: 16px; }
+  h2 { font-size: 1rem; margin: 0 0 12px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+  .field label { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .field output { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+  input[type=range] { accent-color: var(--accent); width: 100%; }
+  input[type=number], select, textarea, input[type=file] { font: inherit; color: var(--ink); background: var(--floor); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+  textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.15; min-height: 110px; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--floor); color: var(--ink); padding: 8px 14px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary { color: #04201c; } }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { opacity: .55; cursor: progress; }
+  .check { display: flex; gap: 8px; align-items: center; padding-bottom: 6px; }
+  .views { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 820px) { .views { grid-template-columns: 1fr; } }
+  .view h3 { margin: 0 0 8px; display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: .9rem; }
+  .view .stat { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .85rem; }
+  .canvas-box { overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--floor); text-align: center; }
+  canvas { display: block; margin: 0 auto; max-width: 100%; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  td.num, th.num { text-align: right; }
+  tr.best td { color: var(--good); font-weight: 600; }
+  .bar { height: 6px; border-radius: 3px; background: var(--accent); min-width: 2px; }
+  .status { min-height: 1.4em; color: var(--muted); font-size: .88rem; margin-top: 8px; }
+  .status.err { color: var(--bad); }
+  .hint { color: var(--muted); font-size: .85rem; margin: 8px 0 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); margin-top: 10px; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  @media (max-width: 600px) { th:nth-child(4), td:nth-child(4) { display: none; } }
+  a { color: var(--accent); }
+  code { background: var(--floor); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Hilbert-RL Spatial Optimizer</h1>
+    <p>Plan warehouse pick routes with classical heuristics and a small reinforcement-learning agent. Click the floor to add or remove items, then compare the routes.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="ctl">
+    <h2 id="ctl">Warehouse and order</h2>
+    <div class="controls">
+      <div class="field"><label for="aisles">Aisles <output id="aislesOut"></output></label><input id="aisles" type="range" min="3" max="14" value="8"></div>
+      <div class="field"><label for="height">Depth <output id="heightOut"></output></label><input id="height" type="range" min="9" max="34" value="22"></div>
+      <div class="field"><label for="k">Items <output id="kOut"></output></label><input id="k" type="range" min="2" max="40" value="14"></div>
+      <div class="field" style="min-width:90px"><label for="seed">Seed</label><input id="seed" type="number" value="1" min="0" max="99999"></div>
+      <button id="newOrder">New random order</button>
+      <button id="clear">Clear items</button>
+      <label class="check"><input type="checkbox" id="overlay" checked> Hilbert curve overlay</label>
+    </div>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="cmp">
+    <h2 id="cmp">Route comparison</h2>
+    <div class="views">
+      <div class="view">
+        <h3><span><select id="selA" aria-label="Method for left view"></select></span><span class="stat" id="statA"></span></h3>
+        <div class="canvas-box"><canvas id="cvA" role="img" aria-label="Warehouse route, left view"></canvas></div>
+      </div>
+      <div class="view">
+        <h3><span><select id="selB" aria-label="Method for right view"></select></span><span class="stat" id="statB"></span></h3>
+        <div class="canvas-box"><canvas id="cvB" role="img" aria-label="Warehouse route, right view"></canvas></div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--depot)"></i>Depot</span>
+      <span><i style="background:var(--item)"></i>Item (number = pick order)</span>
+      <span><i style="background:var(--accent)"></i>Route start</span>
+      <span><i style="background:var(--accent-2)"></i>Route end</span>
+      <span><i style="background:var(--shelf)"></i>Shelf</span>
+    </div>
+    <p class="hint">Walking distance is measured in grid steps around the shelves (shortest path), as a round trip from the depot.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="res">
+    <h2 id="res">Results for this order</h2>
+    <table>
+      <thead><tr><th>Method</th><th class="num">Round trip (steps)</th><th class="num">vs best</th><th style="width:22%"></th><th class="num">Time</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="hint">Single orders are noisy. For averages over many held-out orders see the benchmark in the README (<code>python -m hilbert_rl.cli benchmark</code>).</p>
+  </section>
+
+  <section class="panel" aria-labelledby="bulk">
+    <h2 id="bulk">Optimise your own orders</h2>
+    <div class="grid2">
+      <div>
+        <div class="field"><label for="layoutText">Warehouse layout (optional)</label>
+          <textarea id="layoutText" spellcheck="false" placeholder="Leave empty to use the generated warehouse above. Otherwise draw it: # = shelf, . = floor, D = depot (exactly one)."></textarea></div>
+        <p class="hint"><button id="useCurrent" type="button">Copy the current layout here</button></p>
+      </div>
+      <div>
+        <div class="field"><label for="csv">Orders CSV (columns <code>order_id,x,y</code>)</label><input id="csv" type="file" accept=".csv,text/csv"></div>
+        <div class="field" style="margin-top:12px"><label for="bulkMethod">Method</label>
+          <select id="bulkMethod">
+            <option value="rl_best_of_16">RL agent (best of 16)</option>
+            <option value="rl_greedy">RL agent (greedy)</option>
+            <option value="two_opt">2-opt</option>
+            <option value="nearest_neighbor">Nearest neighbour</option>
+          </select></div>
+        <p style="margin:12px 0 0"><button class="primary" id="runBulk" type="button">Optimise orders</button>
+          <a href="/api/sample-orders.csv" download>Download a sample CSV</a></p>
+      </div>
+    </div>
+    <div class="status" id="bulkStatus" role="status" aria-live="polite"></div>
+    <div id="bulkOut"></div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const state = { layout: null, items: [], results: [] };
+const CELL_MAX = 26;
+
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+async function api(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Request failed (" + res.status + ")");
+  return data;
+}
+
+function setStatus(msg, isErr) { const s = $("status"); s.textContent = msg || ""; s.classList.toggle("err", !!isErr); }
+function layoutBody() { return { aisles: +$("aisles").value, height: +$("height").value }; }
+
+function syncOutputs() {
+  const w = +$("aisles").value * 3 + 1;
+  $("aislesOut").textContent = $("aisles").value + " (" + w + " wide)";
+  $("heightOut").textContent = $("height").value;
+  $("kOut").textContent = $("k").value;
+}
+
+// ---------------------------------------------------------------- loading
+async function loadLayout() {
+  state.layout = await api("/api/layout", layoutBody());
+}
+async function randomItems() {
+  const k = Math.min(+$("k").value, state.layout.pick_cells.length);
+  const r = await api("/api/instance", { ...layoutBody(), k, seed: +$("seed").value });
+  state.items = r.items;
+}
+
+let solveToken = 0;
+async function solve() {
+  const token = ++solveToken;
+  if (!state.items.length) { state.results = []; render(); setStatus("Click the floor to add items to pick."); return; }
+  setStatus("Solving…");
+  try {
+    const r = await api("/api/solve", { ascii: state.layout.ascii, items: state.items });
+    if (token !== solveToken) return;
+    state.results = r.results;
+    render();
+    setStatus(state.items.length + " items on a " + state.layout.width + "×" + state.layout.height + " floor.");
+  } catch (e) { if (token === solveToken) setStatus(e.message, true); }
+}
+
+async function rebuild(newItems) {
+  try {
+    setStatus("Loading…");
+    await loadLayout();
+    if (newItems) await randomItems(); else state.items = [];
+    await solve();
+  } catch (e) { setStatus(e.message, true); }
+}
+
+// --------------------------------------------------------------- drawing
+function drawView(canvas, result, statEl) {
+  const L = state.layout; if (!L) return;
+  const box = canvas.parentElement.clientWidth || 520;
+  const cs = Math.max(8, Math.min(CELL_MAX, Math.floor((box - 4) / L.width)));
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = L.width * cs * dpr; canvas.height = L.height * cs * dpr;
+  canvas.style.width = L.width * cs + "px"; canvas.style.height = L.height * cs + "px";
+  const g = canvas.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const rows = L.ascii.split("\n");
+  g.fillStyle = css("--floor"); g.fillRect(0, 0, L.width * cs, L.height * cs);
+  for (let y = 0; y < L.height; y++) for (let x = 0; x < L.width; x++) {
+    if (rows[y][x] === "#") { g.fillStyle = css("--shelf"); g.fillRect(x * cs, y * cs, cs, cs); g.strokeStyle = css("--shelf-edge"); g.lineWidth = 1; g.strokeRect(x * cs + .5, y * cs + .5, cs - 1, cs - 1); }
+  }
+  if ($("overlay").checked) {
+    g.strokeStyle = css("--curve"); g.lineWidth = Math.max(1, cs / 16); g.lineJoin = "round";
+    for (const seg of L.hilbert_curve) {
+      g.beginPath(); seg.forEach(([x, y], i) => { const px = x * cs + cs / 2, py = y * cs + cs / 2; i ? g.lineTo(px, py) : g.moveTo(px, py); }); g.stroke();
+    }
+  }
+  const order = new Map();
+  if (result) {
+    const route = result.route, n = route.length - 1;
+    g.lineWidth = Math.max(2, cs / 5); g.lineCap = "round";
+    const a = css("--accent"), b = css("--accent-2");
+    for (let i = 0; i < n; i++) {
+      const t = n > 1 ? i / (n - 1) : 0;
+      g.strokeStyle = mix(a, b, t);
+      g.beginPath(); g.moveTo(route[i][0] * cs + cs / 2, route[i][1] * cs + cs / 2); g.lineTo(route[i + 1][0] * cs + cs / 2, route[i + 1][1] * cs + cs / 2); g.stroke();
+    }
+    result.order.forEach((node, i) => { order.set(state.items[node - 1].join(","), i + 1); });
+    statEl.textContent = result.length + " steps";
+  } else statEl.textContent = "";
+  const [dx, dy] = L.depot;
+  g.fillStyle = css("--depot"); g.fillRect(dx * cs + 1, dy * cs + 1, cs - 2, cs - 2);
+  g.fillStyle = "#fff"; g.font = "bold " + Math.floor(cs * .6) + "px system-ui"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("D", dx * cs + cs / 2, dy * cs + cs / 2 + 1);
+  for (const [x, y] of state.items) {
+    g.fillStyle = css("--item"); g.beginPath(); g.arc(x * cs + cs / 2, y * cs + cs / 2, cs * .38, 0, 7); g.fill();
+    const n = order.get(x + "," + y);
+    if (n) { g.fillStyle = css("--panel"); g.font = "bold " + Math.floor(cs * (n > 9 ? .42 : .5)) + "px system-ui"; g.fillText(String(n), x * cs + cs / 2, y * cs + cs / 2 + 1); }
+  }
+  canvas.setAttribute("aria-label", (result ? result.label + ", " + result.length + " steps. " : "") + state.items.length + " items");
+}
+
+function mix(c1, c2, t) {
+  const p = (c) => { const m = c.match(/#([0-9a-f]{6})/i); const h = m ? m[1] : "808080"; return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
+  const a = p(c1), b = p(c2); return "rgb(" + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(",") + ")";
+}
+
+function render() {
+  const byMethod = Object.fromEntries(state.results.map((r) => [r.method, r]));
+  fillSelect($("selA"), "nearest_neighbor"); fillSelect($("selB"), byMethod.rl_best_of_16 ? "rl_best_of_16" : (state.results[0] || {}).method);
+  drawView($("cvA"), byMethod[$("selA").value], $("statA"));
+  drawView($("cvB"), byMethod[$("selB").value], $("statB"));
+  const tbody = $("rows"); tbody.replaceChildren();
+  const best = Math.min(...state.results.map((r) => r.length));
+  const worst = Math.max(...state.results.map((r) => r.length));
+  for (const r of [...state.results].sort((a, b) => a.length - b.length)) {
+    const tr = document.createElement("tr"); if (r.length === best) tr.className = "best";
+    const cells = [r.label, r.length, (r.pct_over_best > 0 ? "+" : "") + r.pct_over_best + "%", null, r.ms + " ms"];
+    cells.forEach((v, i) => {
+      const td = document.createElement("td"); if (i === 1 || i === 2 || i === 4) td.className = "num";
+      if (v === null) { const d = document.createElement("div"); d.className = "bar"; d.style.width = (worst ? 100 * r.length / worst : 0) + "%"; td.appendChild(d); } else td.textContent = v;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+}
+
+function fillSelect(sel, preferred) {
+  const cur = sel.value; sel.replaceChildren();
+  for (const r of state.results) { const o = document.createElement("option"); o.value = r.method; o.textContent = r.label; sel.appendChild(o); }
+  const want = state.results.some((r) => r.method === cur) ? cur : preferred;
+  if (want) sel.value = want;
+}
+
+// ------------------------------------------------------------ interaction
+function cellAt(canvas, ev) {
+  const rect = canvas.getBoundingClientRect(), L = state.layout;
+  const cs = rect.width / L.width;
+  return [Math.floor((ev.clientX - rect.left) / cs), Math.floor((ev.clientY - rect.top) / cs)];
+}
+function toggleItem(ev) {
+  const [x, y] = cellAt(ev.currentTarget, ev), L = state.layout;
+  if (x < 0 || y < 0 || x >= L.width || y >= L.height) return;
+  const i = state.items.findIndex((c) => c[0] === x && c[1] === y);
+  if (i >= 0) state.items.splice(i, 1);
+  else if (L.ascii.split("\n")[y][x] === "." ) { if (state.items.length >= 60) return setStatus("At most 60 items per trip.", true); state.items.push([x, y]); }
+  else return;
+  solve();
+}
+$("cvA").addEventListener("click", toggleItem); $("cvB").addEventListener("click", toggleItem);
+$("selA").addEventListener("change", render); $("selB").addEventListener("change", render);
+$("overlay").addEventListener("change", render);
+$("newOrder").addEventListener("click", () => { $("seed").value = Math.floor(Math.random() * 99999); rebuild(true); });
+$("clear").addEventListener("click", () => { state.items = []; solve(); });
+$("seed").addEventListener("change", () => rebuild(true));
+let timer; const later = (fn) => { clearTimeout(timer); timer = setTimeout(fn, 250); };
+for (const id of ["aisles", "height"]) $(id).addEventListener("input", () => { syncOutputs(); later(() => rebuild(true)); });
+$("k").addEventListener("input", () => { syncOutputs(); later(() => rebuild(true)); });
+window.addEventListener("resize", () => later(render));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+
+// -------------------------------------------------------------- bulk tool
+$("useCurrent").addEventListener("click", () => { if (state.layout) $("layoutText").value = state.layout.ascii; });
+$("runBulk").addEventListener("click", async () => {
+  const out = $("bulkOut"), st = $("bulkStatus"); out.replaceChildren(); st.classList.remove("err");
+  const file = $("csv").files[0];
+  if (!file) { st.textContent = "Choose an orders CSV first."; st.classList.add("err"); return; }
+  const fd = new FormData();
+  fd.append("file", file); fd.append("layout_ascii", $("layoutText").value);
+  fd.append("aisles", $("aisles").value); fd.append("height", $("height").value);
+  fd.append("method", $("bulkMethod").value); fd.append("as_json", "true");
+  $("runBulk").disabled = true; st.textContent = "Optimising…";
+  try {
+    const res = await fetch("/api/optimize/csv", { method: "POST", body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Request failed (" + res.status + ")");
+    st.textContent = data.orders.length + " orders: total " + data.total_length + " steps vs " + data.total_baseline_length + " for the S-shape baseline (" + data.total_saving_pct + "% shorter).";
+    const tbl = document.createElement("table");
+    const head = tbl.createTHead().insertRow();
+    ["Order", "Items", "Steps", "S-shape", "Saved"].forEach((h, i) => { const th = document.createElement("th"); th.textContent = h; if (i) th.className = "num"; head.appendChild(th); });
+    const body = tbl.createTBody();
+    for (const o of data.orders) {
+      const tr = body.insertRow();
+      [o.order_id, o.n_items, o.length, o.baseline_length, o.saving_pct + "%"].forEach((v, i) => { const td = tr.insertCell(); td.textContent = v; if (i) td.className = "num"; });
+    }
+    out.appendChild(tbl);
+    const q = (v) => { v = String(v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const csvLines = ["order_id,step,x,y,order_length,baseline_length"];
+    for (const o of data.orders) o.sequence.forEach(([x, y], i) => csvLines.push([q(o.order_id), i + 1, x, y, o.length, o.baseline_length].join(",")));
+    const a = document.createElement("a"); a.textContent = "Download optimised pick sequences (CSV)";
+    a.href = URL.createObjectURL(new Blob([csvLines.join("\n") + "\n"], { type: "text/csv" })); a.download = "optimised_routes.csv";
+    const p = document.createElement("p"); p.appendChild(a); out.appendChild(p);
+  } catch (e) { st.textContent = e.message; st.classList.add("err"); }
+  finally { $("runBulk").disabled = false; }
+});
+
+syncOutputs();
+rebuild(true);
+</script>
+</body>
+</html>

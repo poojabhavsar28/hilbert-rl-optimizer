@@ -6,13 +6,17 @@ Docs: http://localhost:8000/docs
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api.middleware import RequestContextMiddleware, configure_logging
 from src.api.routes import health, layout, optimize, solve
 from src.api.services import ServiceError
 
+STATIC_DIR = Path(__file__).parent / "static"
 DESCRIPTION = (
     "Warehouse pick routing with classical heuristics and a small "
     "reinforcement-learning agent."
@@ -36,6 +40,13 @@ def create_app() -> FastAPI:
     app.include_router(layout.router)
     app.include_router(solve.router)
     app.include_router(optimize.router)
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def index() -> FileResponse:
+        """Serve the single-page web UI."""
+        return FileResponse(STATIC_DIR / "index.html")
+
     return app
 
 

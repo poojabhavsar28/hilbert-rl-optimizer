@@ -195,3 +195,13 @@ def test_sample_orders_csv_downloads_and_round_trips() -> None:
     body = out.json()
     assert out.status_code == 200 and len(body["orders"]) == 8
     assert body["total_length"] < body["total_baseline_length"]
+
+
+def test_web_ui_is_served_at_the_root() -> None:
+    """The root URL serves the single-page UI, which calls the documented API."""
+    r = client.get("/")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
+    for needle in ("Hilbert-RL Spatial Optimizer", "/api/solve", "/api/optimize/csv"):
+        assert needle in r.text
+    assert client.get("/static/index.html").status_code == 200
+    assert client.get("/static/missing.js").status_code == 404
