@@ -30,6 +30,7 @@ dependencies = [
     "torch>=2.2",
     "hilbertcurve>=2.0",
     "fastapi>=0.111",
+    "python-multipart>=0.0.9",  # CSV upload endpoint
     "uvicorn[standard]>=0.29",
     "pydantic>=2.7",
     "streamlit>=1.35",
