@@ -19,6 +19,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   distances and paths, routing instances, and solvers: S-shape, nearest
   neighbour, Hilbert sort, 2-opt and exact Held-Karp, with tests
 
+- Phase 4: REINFORCE routing agent and trainer, uniform and Hilbert-indexed replay
+  buffers, tabular Q-learning testbed, benchmark/ablation tooling, CLI
+  (`python -m src.rl.cli`), trained weights in `models/`, and recorded results in
+  `docs/results/`
+
 ### Fixed
 - `pip install -e .` failed because hatchling could not locate the `src` package
 - Import order and formatting in the Phase 1 test files (ruff)

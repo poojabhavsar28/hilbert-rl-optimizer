@@ -69,6 +69,26 @@ space or shaped reward yet.
 - MLflow experiment tracking
 - Training callbacks: checkpoint, early stopping, video recording
 
+**Status (Phase 4):** Stable-Baselines3 PPO/SAC, MLflow tracking and training
+callbacks are **not implemented yet**. This phase delivers a NumPy-only
+REINFORCE routing agent (`src/rl/agent.py`, `training.py`), the Hilbert-indexed
+replay buffer with `stratified` and `local` sampling (`replay.py`), a tabular
+Q-learning testbed for it (`navigation.py`), and reproducible experiments
+(`benchmark.py`, `cli.py`, results in `docs/results/`).
+
+What the experiments found (see `docs/results/`):
+
+- The agent beats nearest neighbour by 5 to 8 points of route length on
+  held-out warehouses and matches 2-opt on short orders, but 2-opt is better at
+  30 items.
+- Hilbert-curve *sorting* is the worst routing method tested (+33% to +54%).
+- The agent does slightly **better without** the Hilbert features (ablation).
+- The Hilbert-indexed replay buffer performs the same as uniform replay in the
+  tabular testbed (20 seeds). Its stratified-sampling property is verified in
+  `tests/test_replay.py`, but it has not been shown to improve learning. Testing
+  it where it should matter (large state spaces, function approximation, skewed
+  visitation) is future work.
+
 ### `src/api/`
 - FastAPI REST backend
 - ONNX model for <50ms inference
