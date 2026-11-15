@@ -105,3 +105,17 @@ def test_default_weights_path_honours_env_var(monkeypatch, tmp_path) -> None:
     assert default_weights_path().name == "routing_agent.json"
     monkeypatch.setenv(WEIGHTS_ENV_VAR, str(tmp_path / "x.json"))
     assert default_weights_path() == tmp_path / "x.json"
+
+
+def test_shipped_weights_beat_nearest_neighbor_on_held_out_layout() -> None:
+    """The committed weights beat nearest neighbour on a layout never trained on."""
+    from src.environment import solvers as S
+
+    agent = Agent.load()
+    wh = Warehouse.generate(5, 16)  # held out from training
+    rl = nn = 0.0
+    for offset in range(25):
+        inst = wh.random_instance(15, np.random.default_rng(500 + offset))
+        rl += inst.length(agent.solve(inst, "greedy"))
+        nn += inst.length(S.nearest_neighbor(inst))
+    assert rl < nn
