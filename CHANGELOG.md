@@ -28,6 +28,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   optimise (JSON and CSV upload) endpoints, a service layer, request
   correlation IDs with JSON access logs, CSV formula-injection protection, and
   `python-multipart` as a dependency
+- Phase 6: single-page web UI served by the API at `/` (route comparison, bulk
+  CSV optimisation, sample orders endpoint `GET /api/sample-orders.csv`),
+  `Dockerfile`, `docker-compose.yml`, `requirements-api.txt` and a CI job that
+  builds the image and smoke-tests it
 
 ### Fixed
 - `pip install -e .` failed because hatchling could not locate the `src` package

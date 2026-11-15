@@ -114,6 +114,12 @@ Limits: layouts up to 12,000 cells, 60 items per trip, 200 orders per request,
 1 MB CSV. Warehouses are not cached between requests because each memoises BFS
 maps and would grow without bound.
 
+**Status (Phase 6):** the API serves a single-page web UI (`src/api/static/`)
+at `/`, and ships as a Docker image (`Dockerfile`, `docker-compose.yml`) built
+from `requirements-api.txt`, which excludes torch and the other training-only
+dependencies. CI builds the image and smoke-tests it. **Not implemented:** the
+Streamlit dashboard below and cloud deployment.
+
 ### `app/`
 - Streamlit interactive dashboard
 - Live agent simulation
