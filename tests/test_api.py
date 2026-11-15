@@ -182,3 +182,16 @@ def test_openapi_schema_lists_every_endpoint() -> None:
     expected = {"/api/health", "/api/layout", "/api/instance", "/api/solve"}
     assert expected | {"/api/optimize", "/api/optimize/csv"} <= paths
     assert client.get("/docs").status_code == 200
+
+
+def test_sample_orders_csv_downloads_and_round_trips() -> None:
+    """The sample file is valid for the default warehouse and optimises cleanly."""
+    r = client.get("/api/sample-orders.csv")
+    assert r.status_code == 200 and "attachment" in r.headers["content-disposition"]
+    assert r.text.startswith("order_id,x,y\n")
+    assert client.get("/api/sample-orders.csv").text == r.text  # deterministic
+    files = {"file": ("o.csv", r.content, "text/csv")}
+    out = client.post("/api/optimize/csv", files=files, data={"as_json": "true"})
+    body = out.json()
+    assert out.status_code == 200 and len(body["orders"]) == 8
+    assert body["total_length"] < body["total_baseline_length"]

@@ -19,6 +19,16 @@ def optimize(req: OptimizeRequest) -> dict[str, object]:
     return services.optimize_orders(wh, orders, req.method)
 
 
+@router.get("/sample-orders.csv", response_class=PlainTextResponse)
+def sample_orders() -> PlainTextResponse:
+    """Download a sample orders CSV that fits the default warehouse."""
+    return PlainTextResponse(
+        services.sample_orders_csv(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="sample_orders.csv"'},
+    )
+
+
 @router.post("/optimize/csv", response_model=None)
 async def optimize_csv(
     file: UploadFile = File(..., description="orders CSV with columns order_id,x,y"),

@@ -313,3 +313,22 @@ def render_routes_csv(result: dict[str, object]) -> str:
                 ]
             )
     return buf.getvalue()
+
+
+def sample_orders_csv(n_orders: int = 8, seed: int = 2026) -> str:
+    """Return a deterministic sample orders CSV for the default warehouse.
+
+    The coordinates fit the generated 8-aisle, 22-row layout, so the file works
+    with the default settings of the UI and the CSV endpoint.
+    """
+    wh = Warehouse.generate(8, 22)
+    picks = wh.pick_cells()
+    rng = np.random.default_rng(seed)
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+    w.writerow(["order_id", "x", "y"])
+    for i in range(1, n_orders + 1):
+        k = int(rng.integers(5, 16))
+        for j in rng.choice(len(picks), size=k, replace=False):
+            w.writerow([f"ORD-{i:03d}", *picks[j]])
+    return buf.getvalue()
