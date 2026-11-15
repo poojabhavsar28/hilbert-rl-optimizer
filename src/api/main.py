@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from src.api.middleware import RequestContextMiddleware, configure_logging
-from src.api.routes import health, layout
+from src.api.routes import health, layout, optimize, solve
 from src.api.services import ServiceError
 
 DESCRIPTION = (
@@ -34,6 +34,8 @@ def create_app() -> FastAPI:
     app.add_exception_handler(ServiceError, handle_service_error)
     app.include_router(health.router)
     app.include_router(layout.router)
+    app.include_router(solve.router)
+    app.include_router(optimize.router)
     return app
 
 
