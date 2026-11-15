@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from src.api.middleware import RequestContextMiddleware, configure_logging
 from src.api.routes import health, layout
 from src.api.services import ServiceError
 
@@ -28,6 +29,8 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Hilbert-RL Spatial Optimizer", version="0.1.0", description=DESCRIPTION
     )
+    configure_logging()
+    app.add_middleware(RequestContextMiddleware)
     app.add_exception_handler(ServiceError, handle_service_error)
     app.include_router(health.router)
     app.include_router(layout.router)
