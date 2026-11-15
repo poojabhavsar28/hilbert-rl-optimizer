@@ -24,6 +24,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`python -m src.rl.cli`), trained weights in `models/`, and recorded results in
   `docs/results/`
 
+- Phase 5: FastAPI service (`src/api`): health, layout, instance, solve and bulk
+  optimise (JSON and CSV upload) endpoints, a service layer, request
+  correlation IDs with JSON access logs, CSV formula-injection protection, and
+  `python-multipart` as a dependency
+
 ### Fixed
 - `pip install -e .` failed because hatchling could not locate the `src` package
 - Import order and formatting in the Phase 1 test files (ruff)

@@ -95,6 +95,25 @@ What the experiments found (see `docs/results/`):
 - Pydantic v2 request/response validation
 - Structured JSON logging with correlation IDs
 
+**Status (Phase 5):** implemented: FastAPI app (`src/api/main.py`), thin routes
+(`routes/`), pydantic v2 schemas, a service layer (`services.py`), request
+correlation IDs (`X-Request-ID`) with one JSON access-log line per request, and
+request limits (`config.py`). **Not implemented:** ONNX inference (there is no
+torch model; the agent is a 6-weight linear policy evaluated in NumPy).
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/health` | status, whether weights loaded, available methods |
+| `POST /api/layout` | generate/parse a layout; pick cells and clipped Hilbert curve |
+| `POST /api/instance` | reproducible random order |
+| `POST /api/solve` | route one order with several methods |
+| `POST /api/optimize` | JSON bulk optimisation |
+| `POST /api/optimize/csv` | CSV in, CSV (or JSON) out |
+
+Limits: layouts up to 12,000 cells, 60 items per trip, 200 orders per request,
+1 MB CSV. Warehouses are not cached between requests because each memoises BFS
+maps and would grow without bound.
+
 ### `app/`
 - Streamlit interactive dashboard
 - Live agent simulation
