@@ -1,0 +1,31 @@
+   k  method             mean length   vs ref
+   8  snake                    131.2   +23.5%
+   8  nearest_neighbor         117.8   +11.0%
+   8  hilbert_sort             141.4   +33.2%
+   8  rl_greedy                110.7    +4.2%
+   8  rl_best_of_16            106.8    +0.6%
+   8  two_opt                  107.0    +0.8%
+   8  optimal                  106.2    +0.0%
+      (reference = optimal; RL beats nearest-neighbour on 57% of instances)
+  12  snake                    171.2   +31.9%
+  12  nearest_neighbor         146.7   +13.0%
+  12  hilbert_sort             192.7   +48.5%
+  12  rl_greedy                138.1    +6.4%
+  12  rl_best_of_16            131.1    +1.0%
+  12  two_opt                  131.2    +1.0%
+  12  optimal                  129.8    +0.0%
+      (reference = optimal; RL beats nearest-neighbour on 55% of instances)
+  20  snake                    245.4   +42.1%
+  20  nearest_neighbor         194.7   +12.7%
+  20  hilbert_sort             262.4   +51.9%
+  20  rl_greedy                180.2    +4.3%
+  20  rl_best_of_16            173.4    +0.4%
+  20  two_opt                  172.8    +0.0%
+      (reference = two_opt; RL beats nearest-neighbour on 75% of instances)
+  30  snake                    311.1   +42.9%
+  30  nearest_neighbor         244.4   +12.2%
+  30  hilbert_sort             335.2   +53.9%
+  30  rl_greedy                233.6    +7.3%
+  30  rl_best_of_16            226.2    +3.8%
+  30  two_opt                  217.8    +0.0%
+      (reference = two_opt; RL beats nearest-neighbour on 75% of instances)

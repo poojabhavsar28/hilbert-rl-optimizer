@@ -1,0 +1,6 @@
+Tabular Q-learning, 300 training episodes per run
+
+replay        seeds solved   median ep. to optimal   final gap (steps)
+uniform              20/20                      22                 0.0
+stratified           19/20                      24                 0.1
+local                20/20                      22                 0.3
