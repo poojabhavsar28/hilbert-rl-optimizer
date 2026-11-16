@@ -7,6 +7,7 @@ from collections.abc import Callable
 import numpy as np
 
 from src.environment import solvers as S
+from src.environment.ortools_solver import ortools_available, ortools_order
 from src.environment.warehouse import Instance, Warehouse
 from src.rl.agent import Agent
 from src.rl.training import train
@@ -21,17 +22,20 @@ def benchmark(
     n_instances: int = 40,
     ks: tuple[int, ...] = (8, 12, 20, 30),
     seed: int = 12345,
+    with_ortools: bool = True,
 ) -> dict[str, dict]:
     """Compare all methods on random orders from held-out warehouses.
 
     The reference is the exact optimum when ``k <= HELD_KARP_MAX_K``, otherwise
-    the 2-opt heuristic.
+    the best known route per order (the shorter of 2-opt and, when installed,
+    OR-Tools).
 
     Args:
         agent: The trained agent to evaluate.
         n_instances: Random orders per size.
         ks: Order sizes (items per order).
         seed: Seed for the orders.
+        with_ortools: Also run Google OR-Tools when it is installed.
 
     Returns:
         ``{str(k): row}`` where each row holds the mean route length per method,
@@ -50,23 +54,34 @@ def benchmark(
         ),
         "two_opt": S.best_heuristic,
     }
+    if with_ortools and ortools_available():
+        methods["ortools"] = ortools_order
     out: dict[str, dict] = {}
     for k in ks:
         lens: dict[str, list[float]] = {m: [] for m in methods}
         opt: list[float] = []
+        best_known: list[float] = []
         for _ in range(n_instances):
             inst = warehouses[int(rng.integers(len(warehouses)))].random_instance(
                 k, rng
             )
             for name, fn in methods.items():
                 lens[name].append(inst.length(fn(inst)))
+            best_known.append(
+                min(lens[m][-1] for m in ("two_opt", "ortools") if m in lens)
+            )
             if k <= S.HELD_KARP_MAX_K:
                 opt.append(inst.length(S.held_karp(inst)))
         row: dict = {m: float(np.mean(v)) for m, v in lens.items()}
         if opt:
             row["optimal"] = float(np.mean(opt))
-        ref = row.get("optimal", row["two_opt"])
-        row["_reference"] = "optimal" if opt else "two_opt"
+        if opt:
+            ref = row["optimal"]
+            row["_reference"] = "optimal"
+        else:
+            ref = float(np.mean(best_known))
+            row["_reference"] = "best_known"
+            row["best_known"] = ref
         row["_pct_over_reference"] = {m: 100.0 * (row[m] / ref - 1.0) for m in methods}
         wins = [
             a < b
