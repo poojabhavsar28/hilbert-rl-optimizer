@@ -93,7 +93,9 @@ known-first-party = ["src"]
 
 # ── MyPy (type checker) ───────────────────────────────────────────────────────
 [tool.mypy]
-python_version = "3.10"
+# 3.12 because numpy's type stubs use syntax older targets cannot parse; the code
+# itself still supports 3.10+ (CI runs the tests on 3.10 and 3.11).
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true

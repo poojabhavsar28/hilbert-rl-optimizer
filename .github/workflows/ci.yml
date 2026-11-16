@@ -41,6 +41,9 @@ jobs:
           ruff check src/ tests/
           ruff format --check src/ tests/
 
+      - name: Type check with mypy
+        run: mypy src
+
       - name: Run tests with coverage
         run: |
           pytest tests/ -v \
