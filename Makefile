@@ -10,7 +10,7 @@
 #   make train    → train the routing agent (writes models/routing_agent.json)
 #   make benchmark / ablation / replay → reproduce the documented results
 
-.PHONY: setup test lint format check clean run-api run-app docker-up docker-down help train benchmark ablation replay
+.PHONY: setup test lint format check clean run-api run-app docker-up docker-down help train benchmark latency ablation replay
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 setup:
@@ -60,6 +60,9 @@ train:
 
 benchmark:
 	python -m src.rl.cli benchmark
+
+latency:
+	python -m src.rl.cli latency
 
 ablation:
 	python -m src.rl.cli ablation
