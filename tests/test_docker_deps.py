@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TRANSITIVE = {"starlette"}
 # Training/experiment modules the API never imports; they need packages that
 # are deliberately left out of the image (see test_api_does_not_import_training).
-TRAINING_ONLY = {"src/environment/gym_env.py"}
+TRAINING_ONLY = {"src/environment/gym_env.py", "src/rl/sb3_experiment.py"}
 
 
 def third_party_imports() -> set[str]:
