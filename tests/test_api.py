@@ -14,6 +14,7 @@ def test_health_reports_agent_and_methods() -> None:
     body = client.get("/api/health").json()
     assert body["status"] == "ok" and body["agent_loaded"] is True
     assert "rl_best_of_16" in body["methods"]
+    assert "ortools" in body["methods"]
 
 
 def test_layout_response() -> None:

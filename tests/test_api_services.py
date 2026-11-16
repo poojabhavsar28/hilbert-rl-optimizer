@@ -5,6 +5,7 @@ import pytest
 from src.api import services as svc
 from src.api.config import MAX_ITEMS, MAX_ORDERS
 from src.api.services import ServiceError
+from src.environment.ortools_solver import OrToolsUnavailable
 from src.environment.warehouse import Warehouse
 
 
@@ -77,6 +78,22 @@ def test_rl_methods_need_weights(wh: Warehouse, monkeypatch, tmp_path) -> None:
     finally:
         monkeypatch.undo()
         svc.get_agent.cache_clear()
+
+
+def test_ortools_reports_503_when_not_installed(
+    wh: Warehouse, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A missing optional package is a clear 503, not a crash."""
+
+    def missing(_inst):
+        raise OrToolsUnavailable("OR-Tools is not installed; run `pip install ortools`")
+
+    monkeypatch.setattr(svc, "ortools_order", missing)
+    inst = svc.build_instance(wh, svc.random_items(wh, 5, seed=1))
+    with pytest.raises(ServiceError) as e:
+        svc.run_method("ortools", inst)
+    assert code(e) == 503
+    assert "pip install ortools" in e.value.detail
 
 
 def test_random_items_reproducible_and_limited(wh: Warehouse) -> None:

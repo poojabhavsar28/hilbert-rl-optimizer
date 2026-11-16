@@ -20,6 +20,7 @@ import numpy as np
 
 from src.api.config import MAX_CELLS, MAX_ITEMS, MAX_ORDERS, MAX_UPLOAD_BYTES
 from src.environment import solvers as S
+from src.environment.ortools_solver import OrToolsUnavailable, ortools_order
 from src.environment.warehouse import (
     Cell,
     Instance,
@@ -34,6 +35,7 @@ METHODS = {
     "nearest_neighbor": "Nearest neighbour",
     "hilbert_sort": "Hilbert-curve sort",
     "two_opt": "2-opt (reference)",
+    "ortools": "Google OR-Tools (guided local search)",
     "rl_greedy": "RL agent (greedy)",
     "rl_best_of_16": "RL agent (best of 16)",
     "optimal": "Optimal (exact, <=12 items)",
@@ -45,6 +47,7 @@ DEFAULT_METHODS = [
     "rl_greedy",
     "rl_best_of_16",
     "two_opt",
+    "ortools",
 ]
 
 
@@ -153,6 +156,11 @@ def run_method(name: str, inst: Instance) -> list[int]:
                 422, f"optimal solver supports at most {S.HELD_KARP_MAX_K} items"
             )
         return S.held_karp(inst)
+    if name == "ortools":
+        try:
+            return ortools_order(inst)
+        except OrToolsUnavailable as e:
+            raise ServiceError(503, str(e)) from e
     classical = {
         "snake": S.snake_order,
         "nearest_neighbor": S.nearest_neighbor,
