@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.middleware import RequestContextMiddleware, configure_logging
 from src.api.routes import health, layout, optimize, solve
+from src.api.routes import metrics as metrics_routes
 from src.api.services import ServiceError
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
     app.add_exception_handler(ServiceError, handle_service_error)
     app.include_router(health.router)
+    app.include_router(metrics_routes.router)
     app.include_router(layout.router)
     app.include_router(solve.router)
     app.include_router(optimize.router)

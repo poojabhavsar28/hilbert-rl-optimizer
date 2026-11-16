@@ -13,6 +13,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from src.api.metrics import METRICS, UNMATCHED
+
 REQUEST_ID_HEADER = "X-Request-ID"
 LOGGER_NAME = "hilbert_rl.api"
 # Only accept simple client-supplied ids so they cannot be abused to forge log lines.
@@ -61,6 +63,11 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             status = response.status_code
         finally:
+            elapsed = time.perf_counter() - start
+            route = request.scope.get("route")
+            METRICS.observe(
+                request.method, getattr(route, "path", UNMATCHED), status, elapsed
+            )
             logger.info(
                 "request",
                 extra={
@@ -69,7 +76,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                         "method": request.method,
                         "path": request.url.path,
                         "status": status,
-                        "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+                        "duration_ms": round(elapsed * 1000, 2),
                     }
                 },
             )
