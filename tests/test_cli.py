@@ -39,6 +39,16 @@ def test_benchmark_text_and_json(monkeypatch, tmp_path, capsys) -> None:
     assert "_reference" in json.loads(capsys.readouterr().out)["8"]
 
 
+def test_latency_command_prints_a_table(monkeypatch, tmp_path, capsys) -> None:
+    """``latency`` prints milliseconds per solve for each method."""
+    monkeypatch.setenv(WEIGHTS_ENV_VAR, str(tmp_path / "agent.json"))
+    main(["train", "--episodes", "20"])
+    capsys.readouterr()
+    main(["latency", "--instances", "1"])
+    out = capsys.readouterr().out
+    assert "rl_greedy" in out and "two_opt" in out
+
+
 def test_replay_command_prints_report(capsys) -> None:
     """``replay`` prints a comparison of the three strategies."""
     main(["replay", "--seeds", "1", "--episodes", "6"])
