@@ -15,6 +15,12 @@ from fastapi.staticfiles import StaticFiles
 from src.api.middleware import RequestContextMiddleware, configure_logging
 from src.api.routes import health, layout, optimize, solve
 from src.api.routes import metrics as metrics_routes
+from src.api.security import (
+    ApiKeyMiddleware,
+    RateLimitMiddleware,
+    Settings,
+    SlidingWindowLimiter,
+)
 from src.api.services import ServiceError
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -31,12 +37,27 @@ async def handle_service_error(_: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
-def create_app() -> FastAPI:
-    """Build the FastAPI application with its routes and error handling."""
+def create_app(settings: Settings | None = None) -> FastAPI:
+    """Build the FastAPI application with its routes and error handling.
+
+    Args:
+        settings: Security settings; read from the environment when omitted.
+    """
+    settings = settings or Settings.from_env()
     app = FastAPI(
         title="Hilbert-RL Spatial Optimizer", version="0.1.0", description=DESCRIPTION
     )
     configure_logging()
+    # Added innermost first: the request context wraps everything so rejected
+    # requests are still logged and counted, and the rate limit runs before the
+    # key check so wrong keys cannot be guessed at full speed.
+    if settings.api_key:
+        app.add_middleware(ApiKeyMiddleware, key=settings.api_key)
+    if settings.rate_limit_per_min > 0:
+        app.add_middleware(
+            RateLimitMiddleware,
+            limiter=SlidingWindowLimiter(settings.rate_limit_per_min),
+        )
     app.add_middleware(RequestContextMiddleware)
     app.add_exception_handler(ServiceError, handle_service_error)
     app.include_router(health.router)
