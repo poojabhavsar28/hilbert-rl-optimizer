@@ -27,6 +27,7 @@ dependencies = [
     "numpy>=1.26",
     "gymnasium>=0.29",
     "stable-baselines3>=2.3",
+    "sb3-contrib>=2.3",  # MaskablePPO (action masking)
     "torch>=2.2",
     "hilbertcurve>=2.0",
     "fastapi>=0.111",
