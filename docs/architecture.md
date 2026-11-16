@@ -60,7 +60,7 @@ Hilbert 1.00 / 1, Z-order 1.94 / 32. See `tests/test_locality.py`.
 Gymnasium environment: block-and-aisle warehouses from ASCII maps, exact BFS
 walking distances around shelves, routing instances (distance matrix plus
 Hilbert indices) and solvers (S-shape, nearest neighbour, Hilbert sort, 2-opt,
-exact Held-Karp up to 12 items). There is no `step`/`reset` loop, 10-action
+exact Held-Karp up to 12 items, and Google OR-Tools as an optional baseline). There is no `step`/`reset` loop, 10-action
 space or shaped reward yet.
 
 ### `src/rl/`

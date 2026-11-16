@@ -31,20 +31,30 @@ Hilbert RL:    state = [0.6821]       ← nearby points → nearby values
 
 ## Results
 
-Everything in this section is reproducible with the commands shown and recorded in [`docs/results/`](docs/results/). Distances are walking steps around shelves for a round trip from the depot.
+Everything in this section is reproducible with the commands shown and recorded in [`docs/results/`](docs/results/) (OR-Tools needs `pip install ortools`, included in `requirements-api.txt` and the `solvers` extra). Distances are walking steps around shelves for a round trip from the depot.
 
 ### Routing quality (held-out warehouses, 40 random orders per size)
 
-The agent is trained on five layouts and evaluated on three it has never seen. The reference is the exact optimum for ≤12 items and 2-opt above that. Values are % longer than the reference (lower is better). `make benchmark`
+The agent is trained on five layouts and evaluated on three it has never seen. The reference is the exact optimum for ≤12 items, and above that the better of 2-opt and Google OR-Tools per order. Values are % longer than the reference (lower is better). `make benchmark`
 
-| Items | S-shape | Nearest neighbour | Hilbert sort | **RL greedy** | **RL best-of-16** | 2-opt |
-|---:|---:|---:|---:|---:|---:|---:|
-| 8 | +23.5% | +11.0% | +33.2% | **+4.2%** | **+0.6%** | +0.8% |
-| 12 | +31.9% | +13.0% | +48.5% | **+6.4%** | **+1.0%** | +1.0% |
-| 20 | +42.1% | +12.7% | +51.9% | **+4.3%** | **+0.4%** | 0 (ref) |
-| 30 | +42.9% | +12.2% | +53.9% | **+7.3%** | **+3.8%** | 0 (ref) |
+| Items | S-shape | Nearest neighbour | Hilbert sort | **RL greedy** | **RL best-of-16** | 2-opt | **OR-Tools** |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 8 | +23.5% | +11.0% | +33.2% | +4.2% | +0.6% | +0.8% | **0 (optimal)** |
+| 12 | +31.9% | +13.0% | +48.5% | +6.4% | +1.0% | +1.0% | **0 (optimal)** |
+| 20 | +46.2% | +15.9% | +56.3% | +7.4% | +3.3% | +2.9% | **0 (ref)** |
+| 30 | +46.4% | +15.0% | +57.7% | +9.9% | +6.4% | +2.5% | **+0.1%** |
 
-The learned policy is 5 to 8 percentage points shorter than nearest neighbour on average. On individual orders it wins about 56% of the time for 8 to 12 items and 75% for 20 to 30. Sampling 16 routes and keeping the best matches 2-opt on shorter orders, but **2-opt is better at 30 items**. This is a competitive learned heuristic, not a state-of-the-art solver.
+**Google OR-Tools is the best method here.** It matches the exact optimum up to 12 items and is 3 to 6 points shorter than the learned agent at 20 to 30 items. The learned policy is a good fast heuristic (its routes are 5 to 9 points closer to the reference than nearest neighbour's, and it wins on 55 to 75% of orders), but it is not state of the art, and 2-opt also beats it at 20 and 30 items.
+
+What the agent does offer is speed (`make latency`, milliseconds per solve on a laptop CPU):
+
+| Items | Nearest neighbour | **RL greedy** | RL best-of-16 | 2-opt | OR-Tools (0.3 s budget) |
+|---:|---:|---:|---:|---:|---:|
+| 8 | 0.01 | 0.34 | 0.93 | 0.08 | 304 |
+| 20 | 0.06 | 1.71 | 4.97 | 0.69 | 302 |
+| 30 | 0.13 | 1.62 | 6.73 | 1.43 | 302 |
+
+OR-Tools was given a fixed 0.3 s search budget, so its time is the budget and not the time it needs; the RL agent is about 200x faster than that budget but slower than plain 2-opt in these numbers. If you need the shortest route, use OR-Tools (`method=ortools` in the API). The agent's value is as a research testbed for the Hilbert ideas, not as a better solver.
 
 ### Do the Hilbert components help? Not in these experiments
 
@@ -103,7 +113,7 @@ This is the target design. What exists today (details in [docs/architecture.md](
 | Layer | Implemented | Not yet |
 |---|---|---|
 | `src/hilbert` | 2D encode/decode, batch encoding, sort, unit-square encoder, curve clipping, Z-order baseline, locality metric | 3D / N-D, adaptive resolution |
-| `src/environment` | Block-and-aisle warehouse model, exact walking distances, routing solvers (S-shape, nearest neighbour, Hilbert sort, 2-opt, exact Held-Karp) | Gymnasium `step`/`reset` environment, shaped reward |
+| `src/environment` | Block-and-aisle warehouse model, exact walking distances, routing solvers (S-shape, nearest neighbour, Hilbert sort, 2-opt, exact Held-Karp, Google OR-Tools) | Gymnasium `step`/`reset` environment, shaped reward |
 | `src/rl` | NumPy REINFORCE routing agent, uniform and Hilbert-indexed replay buffers, benchmarks and ablation, CLI | Stable-Baselines3 PPO/SAC, MLflow |
 | `src/api` | FastAPI backend, CSV bulk optimisation, correlation IDs and JSON logs, web UI | ONNX inference, Streamlit dashboard (`app/`) |
 

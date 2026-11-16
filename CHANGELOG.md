@@ -32,6 +32,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   CSV optimisation, sample orders endpoint `GET /api/sample-orders.csv`),
   `Dockerfile`, `docker-compose.yml`, `requirements-api.txt` and a CI job that
   builds the image and smoke-tests it
+- Phase 7: Google OR-Tools solver (`src/environment/ortools_solver.py`, optional
+  `solvers` extra) as a routing method in the benchmark, API and UI; a latency
+  measurement (`make latency`); benchmark reference above 12 items is now the
+  best known route. Result: OR-Tools is optimal up to 12 items and 3 to 6 points
+  shorter than the learned agent at 20 to 30 items
 
 ### Fixed
 - `pip install -e .` failed because hatchling could not locate the `src` package
