@@ -41,7 +41,8 @@ def test_report_lists_every_checkpoint_for_both_modes() -> None:
         "n_eval": 3,
         "total_steps": 1000,
         "nearest_neighbor_gap": 9.5,
-        "curves": {"xy": [curve, curve], "hilbert": [curve, curve]},
+        "curves": {m: [curve, curve] for m in X.OBS_MODES},
     }
     text = X.format_report(res)
-    assert "+9.5%" in text and "1000" in text and "hilbert mean" in text
+    assert "+9.5%" in text and "1000" in text
+    assert all(f"{m} mean" in text for m in X.OBS_MODES)

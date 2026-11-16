@@ -5,12 +5,13 @@ unpicked item to walk to next. The episode ends after the last item, when the
 walk back to the depot is added to the final reward, so the undiscounted return
 is exactly ``-(route length) / (width + height)``.
 
-Two observation modes let the central hypothesis be tested with the same agent:
+Three observation modes let the central hypothesis be tested with the same agent:
 
 * ``"xy"``: the current position and each item's ``(x, y)``, normalised to
   ``[0, 1]``, plus a picked flag per item.
 * ``"hilbert"``: the same, but every position is a single Hilbert-curve index
   normalised to ``[0, 1]``, so the observation is about half as wide.
+* ``"xy_hilbert"``: both, i.e. the Hilbert index as an extra feature.
 
 Import this module only where Gymnasium is installed. The API never imports it.
 Passing an ``action_mask`` (see :meth:`WarehouseRoutingEnv.action_masks`) is
@@ -28,7 +29,7 @@ from numpy.typing import NDArray
 
 from src.environment.warehouse import Cell, Instance, Warehouse
 
-OBS_MODES = ("xy", "hilbert")
+OBS_MODES = ("xy", "hilbert", "xy_hilbert")
 ENV_ID = "HilbertWarehouse-v0"
 
 
@@ -39,7 +40,7 @@ class WarehouseRoutingEnv(gym.Env):
         aisles: Number of aisles of the generated warehouse.
         height: Height of the generated warehouse.
         k: Items per order (fixed, so the observation has a fixed size).
-        obs_mode: ``"xy"`` or ``"hilbert"``.
+        obs_mode: ``"xy"``, ``"hilbert"`` or ``"xy_hilbert"``.
         layouts: Optional list of ``(aisles, height)`` pairs; one is chosen at
             random on every reset. Overrides ``aisles`` and ``height``.
         invalid_penalty: Reward for choosing an already picked item (the state
@@ -80,7 +81,8 @@ class WarehouseRoutingEnv(gym.Env):
                 f"k={k} exceeds the {picks} pick cells of the smallest layout"
             )
         self.action_space = spaces.Discrete(k)
-        width = 2 + 3 * k if obs_mode == "xy" else 1 + 2 * k
+        per_position = {"xy": 2, "hilbert": 1, "xy_hilbert": 3}[obs_mode]
+        width = per_position * (k + 1) + k
         self.observation_space = spaces.Box(0.0, 1.0, shape=(width,), dtype=np.float32)
         self._wh: Warehouse = self._warehouses[0]
         self._inst: Instance | None = None
@@ -103,13 +105,14 @@ class WarehouseRoutingEnv(gym.Env):
 
     def _position(self, node: int) -> NDArray[np.float32]:
         inst = self.instance
-        if self.obs_mode == "hilbert":
-            return np.array([inst.hilbert[node] / inst.hilbert_n], dtype=np.float32)
+        h = inst.hilbert[node] / inst.hilbert_n
         x, y = inst.cells[node]
-        return np.array(
-            [x / max(self._wh.width - 1, 1), y / max(self._wh.height - 1, 1)],
-            dtype=np.float32,
-        )
+        xy = [x / max(self._wh.width - 1, 1), y / max(self._wh.height - 1, 1)]
+        if self.obs_mode == "hilbert":
+            return np.array([h], dtype=np.float32)
+        if self.obs_mode == "xy":
+            return np.array(xy, dtype=np.float32)
+        return np.array([*xy, h], dtype=np.float32)
 
     def _obs(self) -> NDArray[np.float32]:
         parts = [self._position(self._cur)]

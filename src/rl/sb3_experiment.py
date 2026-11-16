@@ -1,7 +1,7 @@
 """Does a Hilbert observation speed up PPO? A controlled comparison.
 
 Trains maskable PPO on :class:`~src.environment.gym_env.WarehouseRoutingEnv`
-with two observation encodings (plain ``xy`` versus a Hilbert index), several
+with three observation encodings (plain ``xy``, a Hilbert index alone, or both together), several
 seeds each, and evaluates the greedy policy on *held-out* warehouses at regular
 intervals. Everything else (network, hyper-parameters, orders, seeds) is the
 same, so any difference comes from the observation.
@@ -20,7 +20,7 @@ from src.environment.gym_env import WarehouseRoutingEnv
 from src.rl.benchmark import EVAL_LAYOUTS
 from src.rl.training import TRAIN_LAYOUTS
 
-OBS_MODES = ("xy", "hilbert")
+OBS_MODES = ("xy", "hilbert", "xy_hilbert")
 
 
 def eval_orders(k: int, n: int, seed: int = 999) -> list[tuple[int, list]]:
@@ -141,23 +141,23 @@ def compare(
 
 def format_report(res: dict) -> str:
     """Render :func:`compare` output: mean gap (and spread) per checkpoint."""
+    modes = [m for m in OBS_MODES if m in res["curves"]]
+    n_seeds = len(res["curves"][modes[0]])
     lines = [
         f"PPO, k={res['k']} items, {res['n_eval']} held-out orders, "
-        f"{len(res['curves']['xy'])} seeds. Gap = % longer than 2-opt (lower is better).",
+        f"{n_seeds} seeds. Gap = % longer than 2-opt (lower is better).",
         f"nearest neighbour on the same orders: {res['nearest_neighbor_gap']:+.1f}%",
         "",
-        f"{'steps':>9}  {'xy mean (min..max)':>26}  {'hilbert mean (min..max)':>26}",
+        f"{'steps':>9}  " + "".join(f"{m + ' mean (min..max)':>30}" for m in modes),
     ]
-    by_mode = {}
-    for mode, runs in res["curves"].items():
-        steps = [s for s, _ in runs[0]]
-        arr = np.array([[g for _, g in run] for run in runs])
-        by_mode[mode] = (steps, arr)
-    steps = by_mode["xy"][0]
-    for i, s in enumerate(steps):
+    arrays = {
+        m: np.array([[g for _, g in run] for run in res["curves"][m]]) for m in modes
+    }
+    steps = [s for s, _ in res["curves"][modes[0]][0]]
+    for i, step in enumerate(steps):
         cells = []
-        for mode in OBS_MODES:
-            col = by_mode[mode][1][:, i]
+        for m in modes:
+            col = arrays[m][:, i]
             cells.append(f"{col.mean():+7.1f}% ({col.min():+.1f}..{col.max():+.1f})")
-        lines.append(f"{s:>9}  {cells[0]:>26}  {cells[1]:>26}")
+        lines.append(f"{step:>9}  " + "".join(f"{c:>30}" for c in cells))
     return "\n".join(lines)

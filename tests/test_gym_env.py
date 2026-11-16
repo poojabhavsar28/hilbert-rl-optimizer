@@ -25,7 +25,7 @@ def first_valid(env: WarehouseRoutingEnv) -> int:
     return int(np.flatnonzero(env.action_masks())[0])
 
 
-@pytest.mark.parametrize("mode", ["xy", "hilbert"])
+@pytest.mark.parametrize("mode", ["xy", "hilbert", "xy_hilbert"])
 def test_passes_the_gymnasium_checker(mode: str) -> None:
     env = gym.make(ENV_ID, obs_mode=mode, render_mode="ansi")
     with warnings.catch_warnings():
@@ -38,6 +38,13 @@ def test_observation_sizes_differ_by_mode() -> None:
     hil = WarehouseRoutingEnv(k=8, obs_mode="hilbert")
     assert xy.observation_space.shape == (2 + 3 * 8,)
     assert hil.observation_space.shape == (1 + 2 * 8,)
+    both = WarehouseRoutingEnv(k=8, obs_mode="xy_hilbert")
+    assert both.observation_space.shape == (3 + 4 * 8,)
+    obs, _ = both.reset(seed=0)
+    assert both.observation_space.contains(obs)
+    # the combined observation is exactly the xy and Hilbert ones side by side
+    xy_obs, _ = WarehouseRoutingEnv(k=8, obs_mode="xy").reset(seed=0)
+    assert np.array_equal(obs[:2], xy_obs[:2])
     obs, _ = hil.reset(seed=0)
     assert hil.observation_space.contains(obs)
 
