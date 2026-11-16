@@ -23,8 +23,10 @@ DESCRIPTION = (
 )
 
 
-async def handle_service_error(_: Request, exc: ServiceError) -> JSONResponse:
+async def handle_service_error(_: Request, exc: Exception) -> JSONResponse:
     """Turn a :class:`ServiceError` into a JSON error response."""
+    if not isinstance(exc, ServiceError):  # only registered for ServiceError
+        raise exc
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 

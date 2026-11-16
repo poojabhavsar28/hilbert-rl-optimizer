@@ -206,3 +206,13 @@ def test_web_ui_is_served_at_the_root() -> None:
         assert needle in r.text
     assert client.get("/static/index.html").status_code == 200
     assert client.get("/static/missing.js").status_code == 404
+
+
+def test_service_error_handler_rejects_other_exceptions() -> None:
+    """The handler is only for ServiceError; anything else is re-raised."""
+    import asyncio
+
+    from src.api.main import handle_service_error
+
+    with pytest.raises(ValueError, match="boom"):
+        asyncio.run(handle_service_error(None, ValueError("boom")))  # type: ignore[arg-type]

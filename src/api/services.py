@@ -15,6 +15,7 @@ import csv
 import io
 import time
 from functools import lru_cache
+from typing import Any
 
 import numpy as np
 
@@ -200,7 +201,7 @@ def solve_order(
     names = list(methods or DEFAULT_METHODS)
     if methods is None and inst.k <= S.HELD_KARP_MAX_K:
         names.append("optimal")
-    results = []
+    results: list[dict[str, Any]] = []
     for name in names:
         t0 = time.perf_counter()
         order = run_method(name, inst)
@@ -239,7 +240,7 @@ def optimize_orders(
     """
     if len(orders) > MAX_ORDERS:
         raise ServiceError(422, f"at most {MAX_ORDERS} orders per request")
-    out = []
+    out: list[dict[str, Any]] = []
     for oid, cells in orders:
         if not cells:
             continue

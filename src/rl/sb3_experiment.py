@@ -12,6 +12,7 @@ Requires ``stable-baselines3`` and ``sb3-contrib`` (not part of the API image).
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import cast
 
 import numpy as np
 
@@ -85,7 +86,7 @@ def train_and_track(
 
     env = ActionMasker(
         WarehouseRoutingEnv(k=k, obs_mode=obs_mode, layouts=TRAIN_LAYOUTS),
-        lambda e: e.unwrapped.action_masks(),
+        lambda e: cast(WarehouseRoutingEnv, e.unwrapped).action_masks(),
     )
     eval_env = WarehouseRoutingEnv(k=k, obs_mode=obs_mode, layouts=EVAL_LAYOUTS)
     curve: list[tuple[int, float]] = []

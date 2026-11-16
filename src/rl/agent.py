@@ -176,7 +176,8 @@ class Agent:
         orders, lengths, _ = self.rollout(
             inst, 1, np.random.default_rng(0), greedy=True
         )
-        best_order, best_len = orders[0].tolist(), float(lengths[0])
+        best_order: list[int] = orders[0].tolist()
+        best_len = float(lengths[0])
         if mode == "best_of_n":
             rng = rng or np.random.default_rng(0)
             orders, lengths, _ = self.rollout(inst, max(1, samples), rng)

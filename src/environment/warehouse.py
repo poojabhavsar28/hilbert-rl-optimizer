@@ -232,10 +232,11 @@ class Warehouse:
         Raises:
             LayoutError: If an item is not a walkable cell or cannot be reached.
         """
-        for c in items:
-            if not self.walkable(tuple(c)):
-                raise LayoutError(f"pick location {tuple(c)} is not a walkable cell")
-        cells = [self.depot] + [tuple(c) for c in items]
+        picks: list[Cell] = [(int(c[0]), int(c[1])) for c in items]
+        for c in picks:
+            if not self.walkable(c):
+                raise LayoutError(f"pick location {c} is not a walkable cell")
+        cells: list[Cell] = [self.depot, *picks]
         n = len(cells)
         dist_matrix = np.zeros((n, n), dtype=np.float64)
         for i, ci in enumerate(cells):
