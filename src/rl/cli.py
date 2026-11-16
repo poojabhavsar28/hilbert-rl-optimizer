@@ -30,7 +30,7 @@ from src.rl.training import train
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser with its five sub-commands."""
+    """Build the argument parser with its six sub-commands."""
     p = argparse.ArgumentParser(prog="hilbert-rl")
     sub = p.add_subparsers(dest="cmd", required=True)
     t = sub.add_parser("train", help="train the routing agent and save its weights")
@@ -46,6 +46,10 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--json", action="store_true", help="print raw JSON")
     lt = sub.add_parser("latency", help="mean milliseconds per solve for each method")
     lt.add_argument("--instances", type=int, default=20)
+    pp = sub.add_parser("ppo", help="PPO with xy vs Hilbert observations (needs SB3)")
+    pp.add_argument("--seeds", type=int, default=3)
+    pp.add_argument("--steps", type=int, default=100_000)
+    pp.add_argument("--json", action="store_true", help="print raw JSON")
     a = sub.add_parser("ablation", help="train with vs without the Hilbert features")
     a.add_argument("--seeds", type=int, default=5)
     r = sub.add_parser("replay", help="uniform vs Hilbert-indexed replay on navigation")
@@ -75,6 +79,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(json.dumps(res, indent=2) if args.json else format_benchmark(res))
     elif args.cmd == "latency":
         print(format_latency(latency(Agent.load(), n_instances=args.instances)))
+    elif args.cmd == "ppo":
+        # imported here so the other commands work without torch / SB3
+        from src.rl.sb3_experiment import compare, format_report
+
+        res = compare(seeds=args.seeds, total_steps=args.steps)
+        print(json.dumps(res) if args.json else format_report(res))
     elif args.cmd == "ablation":
         print(format_ablation(ablation(seeds=args.seeds), args.seeds))
     elif args.cmd == "replay":
