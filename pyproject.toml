@@ -51,6 +51,10 @@ dev = [
     "httpx>=0.27",
 ]
 
+solvers = [
+    "ortools>=9.9",
+]
+
 [project.urls]
 Homepage = "https://github.com/poojabhavsar28/hilbert-rl-optimizer"
 Repository = "https://github.com/poojabhavsar28/hilbert-rl-optimizer"
