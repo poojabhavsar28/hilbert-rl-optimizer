@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 
 import numpy as np
@@ -174,4 +175,54 @@ def format_ablation(res: dict[str, dict], seeds: int) -> str:
             f"(+/-{v['greedy_std']:.2f})   best-of-16 "
             f"{v['best_of_16_pct_over_2opt_mean']:+.2f}% (+/-{v['best_of_16_std']:.2f})"
         )
+    return "\n".join(lines)
+
+
+def latency(
+    agent: Agent,
+    n_instances: int = 20,
+    ks: tuple[int, ...] = (8, 20, 30),
+    seed: int = 12345,
+    with_ortools: bool = True,
+) -> dict[str, dict[str, float]]:
+    """Measure mean wall-clock milliseconds per solve for each method.
+
+    Instances are built before timing, so distance-map construction is not
+    counted. Returns ``{str(k): {method: mean_ms}}``.
+    """
+    rng = np.random.default_rng(seed)
+    warehouses = [Warehouse.generate(a, h) for a, h in EVAL_LAYOUTS]
+    methods: dict[str, Callable[[Instance], list[int]]] = {
+        "snake": S.snake_order,
+        "nearest_neighbor": S.nearest_neighbor,
+        "rl_greedy": lambda i: agent.solve(i, "greedy"),
+        "rl_best_of_16": lambda i: agent.solve(
+            i, "best_of_n", 16, np.random.default_rng(0)
+        ),
+        "two_opt": S.best_heuristic,
+    }
+    if with_ortools and ortools_available():
+        methods["ortools"] = ortools_order
+    out: dict[str, dict[str, float]] = {}
+    for k in ks:
+        insts = [
+            warehouses[int(rng.integers(len(warehouses)))].random_instance(k, rng)
+            for _ in range(n_instances)
+        ]
+        row: dict[str, float] = {}
+        for name, fn in methods.items():
+            t0 = time.perf_counter()
+            for inst in insts:
+                fn(inst)
+            row[name] = 1000.0 * (time.perf_counter() - t0) / n_instances
+        out[str(k)] = row
+    return out
+
+
+def format_latency(res: dict[str, dict[str, float]]) -> str:
+    """Render a :func:`latency` result as a text table (milliseconds per solve)."""
+    methods = list(next(iter(res.values())))
+    lines = [f"{'k':>4}  " + "".join(f"{m:>18}" for m in methods)]
+    for k, row in res.items():
+        lines.append(f"{k:>4}  " + "".join(f"{row[m]:>18.2f}" for m in methods))
     return "\n".join(lines)

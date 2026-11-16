@@ -22,13 +22,15 @@ from src.rl.benchmark import (
     benchmark,
     format_ablation,
     format_benchmark,
+    format_latency,
+    latency,
 )
 from src.rl.navigation import compare_replay, format_replay_report
 from src.rl.training import train
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser with its four sub-commands."""
+    """Build the argument parser with its five sub-commands."""
     p = argparse.ArgumentParser(prog="hilbert-rl")
     sub = p.add_subparsers(dest="cmd", required=True)
     t = sub.add_parser("train", help="train the routing agent and save its weights")
@@ -42,6 +44,8 @@ def build_parser() -> argparse.ArgumentParser:
     b = sub.add_parser("benchmark", help="compare all methods on held-out warehouses")
     b.add_argument("--instances", type=int, default=40)
     b.add_argument("--json", action="store_true", help="print raw JSON")
+    lt = sub.add_parser("latency", help="mean milliseconds per solve for each method")
+    lt.add_argument("--instances", type=int, default=20)
     a = sub.add_parser("ablation", help="train with vs without the Hilbert features")
     a.add_argument("--seeds", type=int, default=5)
     r = sub.add_parser("replay", help="uniform vs Hilbert-indexed replay on navigation")
@@ -69,6 +73,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     elif args.cmd == "benchmark":
         res = benchmark(Agent.load(), n_instances=args.instances)
         print(json.dumps(res, indent=2) if args.json else format_benchmark(res))
+    elif args.cmd == "latency":
+        print(format_latency(latency(Agent.load(), n_instances=args.instances)))
     elif args.cmd == "ablation":
         print(format_ablation(ablation(seeds=args.seeds), args.seeds))
     elif args.cmd == "replay":

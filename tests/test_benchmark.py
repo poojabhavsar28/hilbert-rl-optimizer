@@ -10,6 +10,8 @@ from src.rl.benchmark import (
     benchmark,
     format_ablation,
     format_benchmark,
+    format_latency,
+    latency,
 )
 from src.rl.training import train
 
@@ -65,3 +67,21 @@ def test_ablation_compares_both_variants() -> None:
     text = format_ablation(res, seeds=1)
     assert "with_hilbert_features" in text
     assert len(HILBERT_FEATURES) == 2
+
+
+def test_latency_reports_positive_milliseconds_per_method() -> None:
+    """Each method gets a positive mean time and the table names them all."""
+    agent = Agent(theta=np.array([-3.0, 1.0, 0.0, -1.0, 2.0, 0.5]))
+    res = latency(agent, n_instances=2, ks=(6, 10), with_ortools=False)
+    assert set(res) == {"6", "10"}
+    for row in res.values():
+        assert set(row) == {
+            "snake",
+            "nearest_neighbor",
+            "rl_greedy",
+            "rl_best_of_16",
+            "two_opt",
+        }
+        assert all(ms > 0 for ms in row.values())
+    table = format_latency(res)
+    assert "rl_greedy" in table and "10" in table
