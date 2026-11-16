@@ -49,6 +49,26 @@ def test_latency_command_prints_a_table(monkeypatch, tmp_path, capsys) -> None:
     assert "rl_greedy" in out and "two_opt" in out
 
 
+def test_ppo_command_dispatches_to_the_experiment(monkeypatch, capsys) -> None:
+    """``ppo`` runs the SB3 comparison (stubbed here) and prints its report."""
+    pytest.importorskip("stable_baselines3")
+    from src.rl import sb3_experiment
+
+    called = {}
+
+    def fake_compare(seeds, total_steps):
+        called.update(seeds=seeds, total_steps=total_steps)
+        return {"fake": True}
+
+    monkeypatch.setattr(sb3_experiment, "compare", fake_compare)
+    monkeypatch.setattr(sb3_experiment, "format_report", lambda res: "REPORT")
+    main(["ppo", "--seeds", "2", "--steps", "2048"])
+    assert capsys.readouterr().out.strip() == "REPORT"
+    assert called == {"seeds": 2, "total_steps": 2048}
+    main(["ppo", "--json"])
+    assert json.loads(capsys.readouterr().out) == {"fake": True}
+
+
 def test_replay_command_prints_report(capsys) -> None:
     """``replay`` prints a comparison of the three strategies."""
     main(["replay", "--seeds", "1", "--episodes", "6"])
