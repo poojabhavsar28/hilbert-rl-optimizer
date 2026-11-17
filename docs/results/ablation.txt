@@ -1,0 +1,4 @@
+Mean % over 2-opt on identical held-out orders (5 training seeds, +/- std across seeds)
+
+with_hilbert_features        greedy +6.02% (+/-0.24)   best-of-16 +1.62% (+/-0.05)
+without_hilbert_features     greedy +5.40% (+/-0.11)   best-of-16 +1.38% (+/-0.15)
