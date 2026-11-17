@@ -216,3 +216,11 @@ def test_service_error_handler_rejects_other_exceptions() -> None:
 
     with pytest.raises(ValueError, match="boom"):
         asyncio.run(handle_service_error(None, ValueError("boom")))  # type: ignore[arg-type]
+
+
+def test_ui_sends_the_api_key_and_shows_the_real_cli_command() -> None:
+    """The page can authenticate against a keyed server and cites a command that exists."""
+    html = client.get("/").text
+    assert 'id="apiKey"' in html and "X-API-Key" in html
+    assert "python -m src.rl.cli benchmark" in html
+    assert "hilbert_rl.cli" not in html

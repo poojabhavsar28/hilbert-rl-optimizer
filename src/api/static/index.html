@@ -32,7 +32,7 @@
   .field label { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
   .field output { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
   input[type=range] { accent-color: var(--accent); width: 100%; }
-  input[type=number], select, textarea, input[type=file] { font: inherit; color: var(--ink); background: var(--floor); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+  input[type=number], input[type=password], select, textarea, input[type=file] { font: inherit; color: var(--ink); background: var(--floor); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
   textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.15; min-height: 110px; }
   button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--floor); color: var(--ink); padding: 8px 14px; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
@@ -69,6 +69,10 @@
   <header>
     <h1>Hilbert-RL Spatial Optimizer</h1>
     <p>Plan warehouse pick routes with classical heuristics and a small reinforcement-learning agent. Click the floor to add or remove items, then compare the routes.</p>
+    <details class="hint"><summary>This server needs an API key</summary>
+      <div class="field" style="margin-top:8px"><label for="apiKey">API key (sent as <code>X-API-Key</code>; kept only in this page)</label>
+        <input id="apiKey" type="password" autocomplete="off" spellcheck="false"></div>
+    </details>
   </header>
 
   <section class="panel" aria-labelledby="ctl">
@@ -113,7 +117,7 @@
       <thead><tr><th>Method</th><th class="num">Round trip (steps)</th><th class="num">vs best</th><th style="width:22%"></th><th class="num">Time</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
-    <p class="hint">Single orders are noisy. For averages over many held-out orders see the benchmark in the README (<code>python -m hilbert_rl.cli benchmark</code>).</p>
+    <p class="hint">Single orders are noisy. For averages over many held-out orders see the benchmark in the README (<code>python -m src.rl.cli benchmark</code>).</p>
   </section>
 
   <section class="panel" aria-labelledby="bulk">
@@ -151,8 +155,10 @@ const CELL_MAX = 26;
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+function authHeaders() { const k = $("apiKey").value; return k ? { "X-API-Key": k } : {}; }
+
 async function api(path, body) {
-  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Request failed (" + res.status + ")");
   return data;
@@ -316,7 +322,7 @@ $("runBulk").addEventListener("click", async () => {
   fd.append("method", $("bulkMethod").value); fd.append("as_json", "true");
   $("runBulk").disabled = true; st.textContent = "Optimising…";
   try {
-    const res = await fetch("/api/optimize/csv", { method: "POST", body: fd });
+    const res = await fetch("/api/optimize/csv", { method: "POST", headers: authHeaders(), body: fd });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Request failed (" + res.status + ")");
     st.textContent = data.orders.length + " orders: total " + data.total_length + " steps vs " + data.total_baseline_length + " for the S-shape baseline (" + data.total_saving_pct + "% shorter).";
