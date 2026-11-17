@@ -25,7 +25,7 @@ Hilbert RL:    state = [0.6821]       ← nearby points → nearby values
 
 **The Hilbert Replay Buffer** (this project's key contribution) extends this idea to experience sampling: instead of sampling past experiences uniformly, it samples experiences from spatially nearby states — the agent learns local policies faster.
 
-> **Status of this idea.** The locality property is verified (every step along the curve moves exactly one cell, versus up to 32 cells for Z-order on a 32×32 grid; `tests/test_locality.py`). Whether it *helps learning* is a hypothesis this repository tests rather than a result it has shown: so far each Hilbert component has matched or lost to a simpler alternative (see [Results](#results)). Stable-Baselines3 PPO/SAC agents are not implemented yet, so the claims about them are untested.
+> **Status of this idea.** The locality property is verified (every step along the curve moves exactly one cell, versus up to 32 cells for Z-order on a 32×32 grid; `tests/test_locality.py`). Whether it *helps learning* is a hypothesis this repository tests rather than a result it has shown: so far each Hilbert component has matched or lost to a simpler alternative (see [Results](#results)). The PPO experiment below tests the central claim directly: a Hilbert observation did not help (SAC is not implemented).
 
 ---
 
@@ -63,6 +63,7 @@ OR-Tools was given a fixed 0.3 s search budget, so its time is the budget and no
 | Hilbert-curve **sort** as a routing heuristic | table above | Worst method tested (+33% to +54%): the curve ignores shelves |
 | Hilbert **features** in the agent | 5 training seeds, identical held-out orders (`make ablation`) | Slightly *worse* with them: greedy +6.02% (±0.24) vs **+5.40%** (±0.11) without |
 | Hilbert-indexed **replay buffer** | tabular Q-learning, 20 seeds, 300 episodes (`make replay`) | No difference from uniform replay (below) |
+| Hilbert **observation** for PPO | MaskablePPO on the Gymnasium environment, 3 seeds, 100k steps (`make ppo`) | Hilbert index alone barely learns; as an extra feature it matches plain coordinates (below) |
 
 | Replay | Seeds reaching the optimal path | Median episodes to optimal |
 |---|---:|---:|
@@ -72,9 +73,22 @@ OR-Tools was given a fixed 0.3 s search budget, so its time is the budget and no
 
 The replay result comes from a small tabular testbed, so it does not rule the idea out for large state spaces with function approximation and heavily skewed visitation, which is where it should matter. The buffer's stratified-sampling property itself is verified (`tests/test_replay.py`: with 90% of transitions in one corner it still draws far more from the rest of the map than uniform replay). `python -m src.rl.cli train --no-hilbert-features` trains the agent without the Hilbert features.
 
+### PPO with a Hilbert observation (the central claim, tested)
+
+[`WarehouseRoutingEnv`](src/environment/gym_env.py) is a Gymnasium environment where each action picks the next item and the return is the negative route length. The same action-masked PPO (Stable-Baselines3 contrib, same hyper-parameters, seeds and orders) is trained with three observations and scored on warehouses it never trained on, as % longer than 2-opt (lower is better; nearest neighbour is +10.9% on these orders). `make ppo`, full output in [`docs/results/ppo.txt`](docs/results/ppo.txt):
+
+| Steps | `xy` coordinates | **Hilbert index only** | `xy` + Hilbert index |
+|---:|---:|---:|---:|
+| 0 | +88.7% | +90.1% | +88.9% |
+| 30,720 | +79.0% | +89.8% | +76.5% |
+| 61,440 | +60.2% | +89.7% | +59.7% |
+| 100,352 | **+44.9%** (39.9 to 49.8) | +85.2% (82.2 to 88.6) | +47.4% (45.1 to 48.7) |
+
+A single Hilbert index as the state (the original idea, `state = [0.6821]`) barely learns: a scalar that jumps around in 2-D space is harder for an MLP than two smooth coordinates. Adding the index to the coordinates is indistinguishable from coordinates alone (the ranges overlap). So **no speed-up from Hilbert encoding was found here**. Caveats: 100k steps is short (PPO is still improving and far from the +10.9% of nearest neighbour), only 3 seeds and one order size were run, and the observation does not include the shelf layout. A longer run could change the picture; this one does not support the claim.
+
 ### Target results (original hypothesis, **not reproduced here**)
 
-This table was the project's original target. The PPO/SAC agents it refers to are not implemented in this repository yet, so none of these figures is backed by code here. Treat them as hypotheses.
+This table was the project's original target. The PPO runs above did not reproduce the PPO rows, and SAC is not implemented, so none of these figures is backed by code here. Treat them as hypotheses.
 
 | Method | Mean Reward | Convergence | Path Efficiency |
 |--------|:-----------:|:-----------:|:---------------:|
@@ -113,8 +127,8 @@ This is the target design. What exists today (details in [docs/architecture.md](
 | Layer | Implemented | Not yet |
 |---|---|---|
 | `src/hilbert` | 2D encode/decode, batch encoding, sort, unit-square encoder, curve clipping, Z-order baseline, locality metric | 3D / N-D, adaptive resolution |
-| `src/environment` | Block-and-aisle warehouse model, exact walking distances, routing solvers (S-shape, nearest neighbour, Hilbert sort, 2-opt, exact Held-Karp, Google OR-Tools) | Gymnasium `step`/`reset` environment, shaped reward |
-| `src/rl` | NumPy REINFORCE routing agent, uniform and Hilbert-indexed replay buffers, benchmarks and ablation, CLI | Stable-Baselines3 PPO/SAC, MLflow |
+| `src/environment` | Block-and-aisle warehouse model, exact walking distances, routing solvers (S-shape, nearest neighbour, Hilbert sort, 2-opt, exact Held-Karp, Google OR-Tools), Gymnasium `step`/`reset` environment with action masks and `xy` / `hilbert` / `xy_hilbert` observations | Reward shaping beyond the negative route length, multi-agent / dynamic orders |
+| `src/rl` | NumPy REINFORCE routing agent, uniform and Hilbert-indexed replay buffers, benchmarks and ablation, action-masked PPO experiment (Stable-Baselines3), CLI | SAC, MLflow |
 | `src/api` | FastAPI backend, CSV bulk optimisation, correlation IDs and JSON logs, web UI | ONNX inference, Streamlit dashboard (`app/`) |
 
 ---
@@ -140,6 +154,7 @@ make train        # retrains the routing agent (~4 s) → models/routing_agent.j
 make benchmark    # all routing methods on held-out warehouses
 make ablation     # agent with vs without Hilbert features
 make replay       # uniform vs Hilbert-indexed replay
+make ppo          # PPO: xy vs Hilbert observations (~20 min, needs torch)
 
 # 6. Or run the API + UI in Docker
 docker compose up --build
@@ -217,8 +232,8 @@ All work happens on `phase/*` branches → PR into `dev` → when stable → PR 
 
 - [x] Phase 1 — Repository foundation and dev environment
 - [ ] Phase 2 — Hilbert encoder (2D, ND, Adaptive) — *2D done; ND and adaptive pending*
-- [ ] Phase 3 — Warehouse Gymnasium environment — *routing model and solvers done; Gymnasium wrapper pending*
-- [ ] Phase 4 — RL training + Hilbert replay buffer — *NumPy agent and replay buffer done; PPO/SAC + MLflow pending*
+- [x] Phase 3 — Warehouse Gymnasium environment — *Gymnasium env with action masks and Hilbert observations; reward is the negative route length (no further shaping)*
+- [ ] Phase 4 — RL training + Hilbert replay buffer — *NumPy agent, replay buffer and an action-masked PPO experiment done (Hilbert did not help); SAC + MLflow pending*
 - [x] Phase 5 — FastAPI production backend — *ONNX inference pending*
 - [ ] Phase 6 — Streamlit interactive dashboard — *a web UI is served by the API; Streamlit pending*
 - [ ] Phase 7 — Docker + cloud deployment — *Docker and Compose done; cloud deployment pending*
