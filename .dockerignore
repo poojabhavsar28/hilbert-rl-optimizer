@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+htmlcov
+coverage.xml
+tests
+docs
+notebooks
+paper
+mlruns
+logs
+data

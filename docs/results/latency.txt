@@ -1,0 +1,4 @@
+   k               snake  nearest_neighbor         rl_greedy     rl_best_of_16           two_opt           ortools
+   8                0.00              0.01              0.34              0.93              0.08            304.25
+  20                0.01              0.06              1.71              4.97              0.69            301.54
+  30                0.02              0.13              1.62              6.73              1.43            301.61

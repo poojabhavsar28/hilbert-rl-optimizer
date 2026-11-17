@@ -1,0 +1,10 @@
+Machine: 2 vCPU Intel Xeon @ 2.10GHz (cloud container), one uvicorn worker, no TLS or proxy.
+Closed-loop test: 8 clients send back-to-back, so the server is saturated and
+latencies include queueing. /api/optimize = 20 orders of 12 items (rl_greedy);
+/api/solve = one 8-item order, 4 methods. Reproduce: python scripts/loadtest.py
+
+8 concurrent clients, 20.0s, http://127.0.0.1:8767
+endpoint             requests   req/s   p50 ms   p95 ms   p99 ms  errors
+/api/optimize             202    10.0    726.1    879.6    957.4       0
+/api/solve                203    10.0     64.2    100.5    120.2       0
+total                     405    20.0
