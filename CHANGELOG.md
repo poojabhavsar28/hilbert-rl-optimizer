@@ -37,6 +37,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   measurement (`make latency`); benchmark reference above 12 items is now the
   best known route. Result: OR-Tools is optimal up to 12 items and 3 to 6 points
   shorter than the learned agent at 20 to 30 items
+- Phase 8: Gymnasium environment `WarehouseRoutingEnv` (action masks; `xy`,
+  `hilbert` and `xy_hilbert` observations), a controlled MaskablePPO comparison
+  (`make ppo`) and its recorded result: a Hilbert observation did not speed up
+  learning (index alone barely learns; as an extra feature it matches `xy`)
 
 ### Fixed
 - `pip install -e .` failed because hatchling could not locate the `src` package

@@ -56,15 +56,19 @@ Hilbert 1.00 / 1, Z-order 1.94 / 32. See `tests/test_locality.py`.
 - State space uses Hilbert indices (the core innovation)
 - Shaped reward with 6 components for efficient RL learning
 
-**Status (Phase 3):** this phase provides the *routing* model, not yet a
-Gymnasium environment: block-and-aisle warehouses from ASCII maps, exact BFS
-walking distances around shelves, routing instances (distance matrix plus
+**Status (Phases 3 and 8):** block-and-aisle warehouses from ASCII maps, exact
+BFS walking distances around shelves, routing instances (distance matrix plus
 Hilbert indices) and solvers (S-shape, nearest neighbour, Hilbert sort, 2-opt,
-exact Held-Karp up to 12 items, and Google OR-Tools as an optional baseline). There is no `step`/`reset` loop, 10-action
-space or shaped reward yet.
+exact Held-Karp up to 12 items, and Google OR-Tools as an optional baseline).
+`src/environment/gym_env.py` adds the Gymnasium environment: the action picks
+the next unpicked item (a pointer-style action space, not the 10 movement
+actions sketched above), invalid picks are masked, and the episode return is the
+negative route length scaled by the warehouse size. Observations are `xy`,
+`hilbert` or `xy_hilbert`. Reward shaping beyond the route length is not
+implemented. The module needs Gymnasium and is never imported by the API.
 
 ### `src/rl/`
-- PPO and SAC agents via Stable-Baselines3
+- Action-masked PPO (Stable-Baselines3 contrib) in `sb3_experiment.py`, which compares observation encodings. SAC is not implemented
 - **Hilbert Replay Buffer**: samples spatially-local experiences
 - MLflow experiment tracking
 - Training callbacks: checkpoint, early stopping, video recording
