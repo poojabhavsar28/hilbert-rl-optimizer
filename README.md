@@ -129,7 +129,7 @@ This is the target design. What exists today (details in [docs/architecture.md](
 | `src/hilbert` | 2D encode/decode, batch encoding, sort, unit-square encoder, curve clipping, Z-order baseline, locality metric | 3D / N-D, adaptive resolution |
 | `src/environment` | Block-and-aisle warehouse model, exact walking distances, routing solvers (S-shape, nearest neighbour, Hilbert sort, 2-opt, exact Held-Karp, Google OR-Tools), Gymnasium `step`/`reset` environment with action masks and `xy` / `hilbert` / `xy_hilbert` observations | Reward shaping beyond the negative route length, multi-agent / dynamic orders |
 | `src/rl` | NumPy REINFORCE routing agent, uniform and Hilbert-indexed replay buffers, benchmarks and ablation, action-masked PPO experiment (Stable-Baselines3), CLI | SAC, MLflow |
-| `src/api` | FastAPI backend, CSV bulk optimisation, correlation IDs and JSON logs, web UI | ONNX inference, Streamlit dashboard (`app/`) |
+| `src/api` | FastAPI backend, CSV bulk optimisation, correlation IDs and JSON logs, web UI, optional API-key auth and rate limiting, Prometheus metrics | ONNX inference, Streamlit dashboard (`app/`) |
 
 ---
 
@@ -185,6 +185,8 @@ The result lists the pick sequence per order with its route length and the S-sha
 
 Limits: layouts up to 12,000 cells, 60 items per trip, 200 orders per request, 1 MB CSV.
 
+Production options (all off by default; see [docs/operations.md](docs/operations.md)): `HILBERT_API_KEY` (require an `X-API-Key` header), `HILBERT_RATE_LIMIT_PER_MIN`, Prometheus metrics at `/metrics`, JSON logs with request IDs, and `python scripts/loadtest.py`. Measured on a 2-vCPU container with one worker: about 20 mixed requests per second saturated; one 8-item solve with four methods takes roughly 14 ms unloaded (see [docs/results/loadtest.txt](docs/results/loadtest.txt)). This is a single-process service sized for a team or a demo, not for high traffic.
+
 ---
 
 ## Project Structure
@@ -214,6 +216,7 @@ make setup    # install dev dependencies
 make lint     # ruff check + format check
 make test     # pytest with coverage
 make check    # lint + test (run before every PR)
+mypy src      # type check (also runs in CI)
 ```
 
 ### Branch strategy

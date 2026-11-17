@@ -41,6 +41,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `hilbert` and `xy_hilbert` observations), a controlled MaskablePPO comparison
   (`make ppo`) and its recorded result: a Hilbert observation did not speed up
   learning (index alone barely learns; as an extra feature it matches `xy`)
+- Phase 9: optional API-key auth and per-client rate limiting, Prometheus
+  `/metrics`, API key field in the web UI, mypy in CI (type errors fixed), an
+  asyncio load-test script with a recorded run, and an operations guide. The UI
+  no longer cites a nonexistent benchmark command
 
 ### Fixed
 - `pip install -e .` failed because hatchling could not locate the `src` package
